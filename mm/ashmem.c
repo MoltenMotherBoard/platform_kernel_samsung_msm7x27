@@ -679,23 +679,7 @@ static int ashmem_cache_op(struct ashmem_area *asma,
 #ifdef CONFIG_OUTER_CACHE
 	unsigned long vaddr;
 #endif
-	if (!asma->vm_start)
-		return -EINVAL;
-
-	down_read(&current->mm->mmap_sem);
-	vma = find_vma(current->mm, asma->vm_start);
-	if (!vma) {
-		ret = -EINVAL;
-		goto done;
-	}
-	if (vma->vm_file != asma->file) {
-		ret = -EINVAL;
-		goto done;
-	}
-	if ((asma->vm_start + asma->size) > (vma->vm_start + vma->vm_end)) {
-		ret = -EINVAL;
-		goto done;
-	}
+	mutex_lock(&ashmem_mutex);
 #ifndef CONFIG_OUTER_CACHE
 	cache_func(asma->vm_start, asma->size, 0);
 #else
@@ -708,11 +692,8 @@ static int ashmem_cache_op(struct ashmem_area *asma,
 		cache_func(vaddr, PAGE_SIZE, physaddr);
 	}
 #endif
-done:
-	up_read(&current->mm->mmap_sem);
-	if (ret)
-		asma->vm_start = 0;
-	return ret;
+	mutex_unlock(&ashmem_mutex);
+	return 0;
 }
 
 static long ashmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
