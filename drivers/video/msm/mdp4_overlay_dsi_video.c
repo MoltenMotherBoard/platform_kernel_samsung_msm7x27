@@ -95,8 +95,7 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 
 	bpp = fbi->var.bits_per_pixel / 8;
 	buf = (uint8 *) fbi->fix.smem_start;
-	buf += fbi->var.xoffset * bpp +
-		fbi->var.yoffset * fbi->fix.line_length;
+	buf += calc_fb_offset(mfd, fbi, bpp);
 
 	if (dsi_pipe == NULL) {
 		ptype = mdp4_overlay_format2type(mfd->fb_imgType);
@@ -242,6 +241,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 
 	ret = panel_next_off(pdev);
 
+<<<<<<< HEAD
 #ifdef MIPI_DSI_RGB_UNSTAGE
 	/* delay to make sure the last frame finishes */
 	msleep(100);
@@ -249,6 +249,127 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	/* dis-engage rgb0 from mixer0 */
 	if (dsi_pipe)
 		mdp4_mixer_stage_down(dsi_pipe);
+=======
+/* 3D side by side */
+void mdp4_dsi_video_3d_sbys(struct msm_fb_data_type *mfd,
+				struct msmfb_overlay_3d *r3d)
+{
+	struct fb_info *fbi;
+	struct mdp4_overlay_pipe *pipe;
+	int bpp;
+	uint8 *buf = NULL;
+
+	if (dsi_pipe == NULL)
+		return;
+
+	dsi_pipe->is_3d = r3d->is_3d;
+	dsi_pipe->src_height_3d = r3d->height;
+	dsi_pipe->src_width_3d = r3d->width;
+
+	pipe = dsi_pipe;
+
+	if (pipe->is_3d)
+		mdp4_overlay_panel_3d(pipe->mixer_num, MDP4_3D_SIDE_BY_SIDE);
+	else
+		mdp4_overlay_panel_3d(pipe->mixer_num, MDP4_3D_NONE);
+
+	fbi = mfd->fbi;
+
+	bpp = fbi->var.bits_per_pixel / 8;
+	buf = (uint8 *) fbi->fix.smem_start;
+	buf += calc_fb_offset(mfd, fbi, bpp);
+
+	if (pipe->is_3d) {
+		pipe->src_height = pipe->src_height_3d;
+		pipe->src_width = pipe->src_width_3d;
+		pipe->src_h = pipe->src_height_3d;
+		pipe->src_w = pipe->src_width_3d;
+		pipe->dst_h = pipe->src_height_3d;
+		pipe->dst_w = pipe->src_width_3d;
+		pipe->srcp0_ystride = msm_fb_line_length(0,
+					pipe->src_width, bpp);
+	} else {
+		 /* 2D */
+		pipe->src_height = fbi->var.yres;
+		pipe->src_width = fbi->var.xres;
+		pipe->src_h = fbi->var.yres;
+		pipe->src_w = fbi->var.xres;
+		pipe->dst_h = fbi->var.yres;
+		pipe->dst_w = fbi->var.xres;
+		pipe->srcp0_ystride = fbi->fix.line_length;
+	}
+
+	pipe->src_y = 0;
+	pipe->src_x = 0;
+	pipe->dst_y = 0;
+	pipe->dst_x = 0;
+
+	if (mfd->map_buffer) {
+		pipe->srcp0_addr = (unsigned int)mfd->map_buffer->iova[0] + \
+			buf_offset;
+		pr_debug("start 0x%lx srcp0_addr 0x%x\n", mfd->
+			map_buffer->iova[0], pipe->srcp0_addr);
+	} else {
+		pipe->srcp0_addr = (uint32)(buf + buf_offset);
+	}
+
+	mdp4_overlay_rgb_setup(pipe);
+
+	mdp4_overlayproc_cfg(pipe);
+
+	mdp4_overlay_dmap_xy(pipe);
+
+	mdp4_overlay_dmap_cfg(mfd, 1);
+
+	mdp4_mixer_stage_up(pipe);
+
+	mb();
+
+	/* wait for vsycn */
+	mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
+}
+
+static void mdp4_dsi_video_blt_ov_update(struct mdp4_overlay_pipe *pipe)
+{
+	uint32 off, addr;
+	int bpp;
+	char *overlay_base;
+
+
+	if (pipe->blt_addr == 0)
+		return;
+
+
+#ifdef BLT_RGB565
+	bpp = 2; /* overlay ouput is RGB565 */
+#else
+	bpp = 3; /* overlay ouput is RGB888 */
+#endif
+	off = 0;
+	if (pipe->ov_cnt & 0x01)
+		off = pipe->src_height * pipe->src_width * bpp;
+	addr = pipe->blt_addr + off;
+
+	/* overlay 0 */
+	overlay_base = MDP_BASE + MDP4_OVERLAYPROC0_BASE;/* 0x10000 */
+	outpdw(overlay_base + 0x000c, addr);
+	outpdw(overlay_base + 0x001c, addr);
+}
+
+static void mdp4_dsi_video_blt_dmap_update(struct mdp4_overlay_pipe *pipe)
+{
+	uint32 off, addr;
+	int bpp;
+
+	if (pipe->blt_addr == 0)
+		return;
+
+
+#ifdef BLT_RGB565
+	bpp = 2; /* overlay ouput is RGB565 */
+#else
+	bpp = 3; /* overlay ouput is RGB888 */
+>>>>>>> c9b0b0d... msm_fb: Clean up of frame buffer 4KB alignment changes
 #endif
 
 	return ret;
@@ -268,17 +389,16 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 	struct fb_info *fbi = mfd->fbi;
 	uint8 *buf;
 	int bpp;
-	unsigned long flag;
+
 	struct mdp4_overlay_pipe *pipe;
 
 	if (!mfd->panel_power_on)
 		return;
 
-	/* no need to power on cmd block since it's dsi mode */
+	/* no need to power on cmd block since it's dsi video mode */
 	bpp = fbi->var.bits_per_pixel / 8;
 	buf = (uint8 *) fbi->fix.smem_start;
-	buf += fbi->var.xoffset * bpp +
-		fbi->var.yoffset * fbi->fix.line_length;
+	buf += calc_fb_offset(mfd, fbi, bpp);
 
 	mutex_lock(&mfd->dma->ov_mutex);
 
