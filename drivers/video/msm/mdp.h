@@ -704,4 +704,38 @@ int mdp_debugfs_init(void);
 void mdp_dma_s_update(struct msm_fb_data_type *mfd);
 int mdp_start_histogram(struct fb_info *info);
 int mdp_stop_histogram(struct fb_info *info);
+int mdp_histogram_ctrl(boolean en);
+void __mdp_histogram_kickoff(void);
+void __mdp_histogram_reset(void);
+void mdp_footswitch_ctrl(boolean on);
+
+#ifdef CONFIG_FB_MSM_MDP303
+static inline void mdp4_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
+{
+	/* empty */
+}
+
+static inline void mdp4_dsi_blt_dmap_busy_wait(struct msm_fb_data_type *mfd)
+{
+	/* empty */
+}
+static inline void mdp4_overlay_dsi_state_set(int state)
+{
+	/* empty */
+}
+static inline int mdp4_overlay_dsi_state_get(void)
+{
+	return 0;
+}
+#endif
+
+void mdp_vid_quant_set(void);
+#ifndef CONFIG_FB_MSM_MDP40
+static inline void mdp_dsi_cmd_overlay_suspend(void)
+{
+	/* empty */
+}
+#endif
+
+void mdp_vid_quant_set(void);
 #endif /* MDP_H */
