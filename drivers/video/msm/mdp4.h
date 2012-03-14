@@ -378,6 +378,76 @@ uint32 mdp4_overlay_format(struct mdp4_overlay_pipe *pipe);
 uint32 mdp4_overlay_unpack_pattern(struct mdp4_overlay_pipe *pipe);
 uint32 mdp4_overlay_op_mode(struct mdp4_overlay_pipe *pipe);
 void mdp4_lcdc_overlay(struct msm_fb_data_type *mfd);
+#ifdef CONFIG_FB_MSM_DTV
+void mdp4_overlay_dtv_start(void);
+void mdp4_overlay_dtv_ov_done_push(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe);
+void mdp4_overlay_dtv_wait_for_ov(struct msm_fb_data_type *mfd,
+	struct mdp4_overlay_pipe *pipe);
+int mdp4_overlay_dtv_set(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe);
+int mdp4_overlay_dtv_unset(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe);
+void mdp4_dma_e_done_dtv(void);
+void mdp4_overlay_dtv_wait4vsync(void);
+#else
+static inline void mdp4_overlay_dtv_start(void)
+{
+	/* empty */
+}
+static inline void  mdp4_overlay_dtv_ov_done_push(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe)
+{
+	/* empty */
+}
+static inline void  mdp4_overlay_dtv_wait_for_ov(struct msm_fb_data_type *mfd,
+	struct mdp4_overlay_pipe *pipe)
+{
+	/* empty */
+}
+static inline int mdp4_overlay_dtv_set(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe)
+{
+	return 0;
+}
+static inline int mdp4_overlay_dtv_unset(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe)
+{
+	return 0;
+}
+static inline void mdp4_dma_e_done_dtv(void)
+{
+    /* empty */
+}
+static inline void mdp4_overlay_dtv_wait4vsync(void)
+{
+    /* empty */
+}
+static inline void mdp4_dtv_overlay_blt_start(struct msm_fb_data_type *mfd)
+{
+	return;
+}
+static inline void mdp4_dtv_overlay_blt_stop(struct msm_fb_data_type *mfd)
+{
+	return;
+}
+#endif
+
+void mdp4_dtv_set_black_screen(void);
+
+static inline int mdp4_overlay_borderfill_supported(void)
+{
+	unsigned int mdp_hw_version;
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+	mdp_hw_version = inpdw(MDP_BASE + 0x0); /* MDP_HW_VERSION */
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+	return (mdp_hw_version >= 0x0402030b);
+}
+
+int mdp4_overlay_dtv_set(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe);
+int mdp4_overlay_dtv_unset(struct msm_fb_data_type *mfd,
+			struct mdp4_overlay_pipe *pipe);
 void mdp4_dtv_overlay(struct msm_fb_data_type *mfd);
 int mdp4_dtv_on(struct platform_device *pdev);
 int mdp4_dtv_off(struct platform_device *pdev);
