@@ -675,24 +675,77 @@ static u32 vid_dec_set_h264_mv_buffers(struct video_client_ctx *client_ctx,
 
 	memset(&vcd_h264_mv_buffer, 0,
 		   sizeof(struct vcd_property_h264_mv_buffer));
-	vcd_h264_mv_buffer.size = mv_data->size;
-	vcd_h264_mv_buffer.count = mv_data->count;
-	vcd_h264_mv_buffer.pmem_fd = mv_data->pmem_fd;
-	vcd_h264_mv_buffer.offset = mv_data->offset;
+	vcd_h264_mv_buffer->size = mv_data->size;
+	vcd_h264_mv_buffer->count = mv_data->count;
+	vcd_h264_mv_buffer->pmem_fd = mv_data->pmem_fd;
+	vcd_h264_mv_buffer->offset = mv_data->offset;
 
-	if (get_pmem_file(vcd_h264_mv_buffer.pmem_fd,
-		(unsigned long *) (&(vcd_h264_mv_buffer.physical_addr)),
-		(unsigned long *) (&vcd_h264_mv_buffer.kernel_virtual_addr),
-		(unsigned long *) (&len), &file)) {
-		ERR("%s(): get_pmem_file failed\n", __func__);
-		return false;
+	if (!vcd_get_ion_status()) {
+		if (get_pmem_file(vcd_h264_mv_buffer->pmem_fd,
+			(unsigned long *) (&(vcd_h264_mv_buffer->
+			physical_addr)),
+			(unsigned long *) (&vcd_h264_mv_buffer->
+						kernel_virtual_addr),
+			(unsigned long *) (&len), &file)) {
+			ERR("%s(): get_pmem_file failed\n", __func__);
+			return false;
+		}
+		put_pmem_file(file);
+		flags = MSM_SUBSYSTEM_MAP_IOVA;
+		mapped_buffer = msm_subsystem_map_buffer(
+			(unsigned long)vcd_h264_mv_buffer->physical_addr, len,
+				flags, vidc_mmu_subsystem,
+				sizeof(vidc_mmu_subsystem)/
+				sizeof(unsigned int));
+		if (IS_ERR(mapped_buffer)) {
+			pr_err("buffer map failed");
+			return false;
+		}
+		vcd_h264_mv_buffer->client_data = (void *) mapped_buffer;
+		vcd_h264_mv_buffer->dev_addr = (u8 *)mapped_buffer->iova[0];
+	} else {
+		client_ctx->h264_mv_ion_handle = ion_import_fd(
+					client_ctx->user_ion_client,
+					vcd_h264_mv_buffer->pmem_fd);
+		if (IS_ERR_OR_NULL(client_ctx->h264_mv_ion_handle)) {
+			ERR("%s(): get_ION_handle failed\n", __func__);
+			goto import_ion_error;
+		}
+		rc = ion_handle_get_flags(client_ctx->user_ion_client,
+					client_ctx->h264_mv_ion_handle,
+					&ionflag);
+		if (rc) {
+			ERR("%s():get_ION_flags fail\n",
+					 __func__);
+			goto import_ion_error;
+		}
+		vcd_h264_mv_buffer->kernel_virtual_addr = (u8 *) ion_map_kernel(
+			client_ctx->user_ion_client,
+			client_ctx->h264_mv_ion_handle,
+			ionflag);
+		if (!vcd_h264_mv_buffer->kernel_virtual_addr) {
+			ERR("%s(): get_ION_kernel virtual addr failed\n",
+				 __func__);
+			goto import_ion_error;
+		}
+		rc = ion_map_iommu(client_ctx->user_ion_client,
+				client_ctx->h264_mv_ion_handle,
+				VIDEO_DOMAIN, VIDEO_MAIN_POOL,
+				SZ_4K, 0, (unsigned long *)&iova,
+				(unsigned long *)&buffer_size, UNCACHED, 0);
+		if (rc) {
+			ERR("%s():get_ION_kernel physical addr fail\n",
+					 __func__);
+			goto ion_map_error;
+		}
+		vcd_h264_mv_buffer->physical_addr = (u8 *) iova;
+		vcd_h264_mv_buffer->client_data = NULL;
+		vcd_h264_mv_buffer->dev_addr = (u8 *) iova;
 	}
-	put_pmem_file(file);
-
-	DBG("Virt: %p, Phys %p, fd: %d\n", vcd_h264_mv_buffer.
-		kernel_virtual_addr, vcd_h264_mv_buffer.physical_addr,
-		vcd_h264_mv_buffer.pmem_fd);
-
+	DBG("Virt: %p, Phys %p, fd: %d", vcd_h264_mv_buffer->
+		kernel_virtual_addr, vcd_h264_mv_buffer->physical_addr,
+		vcd_h264_mv_buffer->pmem_fd);
+	DBG("Dev addr %p", vcd_h264_mv_buffer->dev_addr);\
 	vcd_status = vcd_set_property(client_ctx->vcd_handle,
 				      &vcd_property_hdr, &vcd_h264_mv_buffer);
 
@@ -700,6 +753,19 @@ static u32 vid_dec_set_h264_mv_buffers(struct video_client_ctx *client_ctx,
 		return false;
 	else
 		return true;
+ion_map_error:
+	if (vcd_h264_mv_buffer->kernel_virtual_addr) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+				client_ctx->h264_mv_ion_handle);
+		vcd_h264_mv_buffer->kernel_virtual_addr = NULL;
+	}
+	if (!IS_ERR_OR_NULL(client_ctx->h264_mv_ion_handle)) {
+		ion_free(client_ctx->user_ion_client,
+			client_ctx->h264_mv_ion_handle);
+		 client_ctx->h264_mv_ion_handle = NULL;
+	}
+import_ion_error:
+	return false;
 }
 
 static u32 vid_dec_get_h264_mv_buffer_size(struct video_client_ctx *client_ctx,
@@ -746,6 +812,19 @@ static u32 vid_dec_free_h264_mv_buffers(struct video_client_ctx *client_ctx)
 
 	vcd_status = vcd_set_property(client_ctx->vcd_handle,
 				      &vcd_property_hdr, &h264_mv_buffer_size);
+
+	if (!IS_ERR_OR_NULL(client_ctx->h264_mv_ion_handle)) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+					client_ctx->h264_mv_ion_handle);
+		ion_unmap_iommu(client_ctx->user_ion_client,
+				client_ctx->h264_mv_ion_handle,
+				VIDEO_DOMAIN,
+				VIDEO_MAIN_POOL);
+		ion_free(client_ctx->user_ion_client,
+					client_ctx->h264_mv_ion_handle);
+		 client_ctx->h264_mv_ion_handle = NULL;
+	}
+
 	if (vcd_status)
 		return false;
 	else
