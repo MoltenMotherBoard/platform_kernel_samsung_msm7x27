@@ -225,3 +225,12 @@ void ddl_reset_time_variables(u8 codec)
 		ddl_enc_count = 0;
 	}
 }
+int ddl_get_core_decode_proc_time(u32 *ddl_handle)
+{
+	return 0;
+}
+
+void ddl_reset_avg_dec_time(u32 *ddl_handle)
+{
+	return;
+}

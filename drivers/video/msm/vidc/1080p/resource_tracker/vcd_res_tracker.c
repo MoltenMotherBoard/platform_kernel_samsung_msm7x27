@@ -411,3 +411,273 @@ void res_trk_init(struct device *device, u32 irq)
 u32 res_trk_get_core_type(void){
 	return resource_context.core_type;
 }
+
+u32 res_trk_get_firmware_addr(struct ddl_buf_addr *firm_addr)
+{
+	int rc = 0;
+	size_t size= 0;
+	if (!firm_addr || resource_context.firmware_addr.mapped_buffer) {
+		pr_err("%s() invalid params", __func__);
+		return -EINVAL;
+	}
+	if (res_trk_is_cp_enabled() && res_trk_check_for_sec_session())
+		size = PIL_FW_SIZE;
+	else
+		size = VIDC_FW_SIZE;
+
+	if (res_trk_pmem_alloc(&resource_context.firmware_addr,
+				size, DDL_KILO_BYTE(128))) {
+		pr_err("%s() Firmware buffer allocation failed",
+				__func__);
+		memset(&resource_context.firmware_addr, 0,
+				sizeof(resource_context.firmware_addr));
+		rc = -ENOMEM;
+		goto fail_alloc;
+	}
+	if (!res_trk_pmem_map(&resource_context.firmware_addr,
+		resource_context.firmware_addr.buffer_size,
+		DDL_KILO_BYTE(128))) {
+		pr_err("%s() Firmware buffer mapping failed",
+			   __func__);
+		rc = -ENOMEM;
+		goto fail_map;
+	}
+	memcpy(firm_addr, &resource_context.firmware_addr,
+			sizeof(struct ddl_buf_addr));
+	return 0;
+fail_map:
+	res_trk_pmem_free(&resource_context.firmware_addr);
+fail_alloc:
+	return rc;
+}
+
+void res_trk_release_fw_addr(void)
+{
+	res_trk_pmem_unmap(&resource_context.firmware_addr);
+	res_trk_pmem_free(&resource_context.firmware_addr);
+}
+
+int res_trk_check_for_sec_session(void)
+{
+	int rc;
+	mutex_lock(&resource_context.secure_lock);
+	rc = resource_context.secure_session;
+	mutex_unlock(&resource_context.secure_lock);
+	return rc;
+}
+
+int res_trk_get_mem_type(void)
+{
+	int mem_type = -1;
+	switch (resource_context.res_mem_type) {
+	case DDL_FW_MEM:
+		mem_type = ION_HEAP(resource_context.fw_mem_type);
+		return mem_type;
+	case DDL_MM_MEM:
+		mem_type = resource_context.memtype;
+		break;
+	case DDL_CMD_MEM:
+		if (res_trk_check_for_sec_session())
+			mem_type = resource_context.cmd_mem_type;
+		else
+			mem_type = resource_context.memtype;
+		break;
+	default:
+		return mem_type;
+	}
+	if (resource_context.vidc_platform_data->enable_ion) {
+		if (res_trk_check_for_sec_session()) {
+         mem_type = ION_HEAP(mem_type);
+         if(resource_context.res_mem_type != DDL_FW_MEM)
+            mem_type |= ION_SECURE;
+         else if (res_trk_is_cp_enabled())
+            mem_type |= ION_SECURE;
+      }
+		else
+			mem_type = (ION_HEAP(mem_type) |
+					ION_HEAP(ION_IOMMU_HEAP_ID));
+	}
+	return mem_type;
+}
+
+u32 res_trk_is_cp_enabled(void)
+{
+	if (resource_context.vidc_platform_data->cp_enabled)
+		return 1;
+	else
+		return 0;
+}
+
+u32 res_trk_get_enable_ion(void)
+{
+	if (resource_context.vidc_platform_data->enable_ion)
+		return 1;
+	else
+		return 0;
+}
+
+struct ion_client *res_trk_get_ion_client(void)
+{
+	return resource_context.res_ion_client;
+}
+
+u32 res_trk_get_disable_dmx(void){
+	return resource_context.disable_dmx;
+}
+
+void res_trk_set_mem_type(enum ddl_mem_area mem_type)
+{
+	resource_context.res_mem_type = mem_type;
+	return;
+}
+
+u32 res_trk_get_disable_fullhd(void)
+{
+	return resource_context.disable_fullhd;
+}
+
+int res_trk_enable_iommu_clocks(void)
+{
+	int ret = 0, i;
+	if (resource_context.mmu_clks_on) {
+		pr_err(" %s: Clocks are already on", __func__);
+		return -EINVAL;
+	}
+	resource_context.mmu_clks_on = 1;
+	for (i = 0; i < ARRAY_SIZE(vidc_mmu_clks); i++) {
+		vidc_mmu_clks[i].mmu_clk = clk_get(resource_context.device,
+			vidc_mmu_clks[i].mmu_clk_name);
+		if (IS_ERR(vidc_mmu_clks[i].mmu_clk)) {
+			pr_err(" %s: Get failed for clk %s", __func__,
+				   vidc_mmu_clks[i].mmu_clk_name);
+			ret = PTR_ERR(vidc_mmu_clks[i].mmu_clk);
+		}
+		if (!ret) {
+			ret = clk_enable(vidc_mmu_clks[i].mmu_clk);
+			if (ret) {
+				clk_put(vidc_mmu_clks[i].mmu_clk);
+				vidc_mmu_clks[i].mmu_clk = NULL;
+			}
+		}
+		if (ret) {
+			for (i--; i >= 0; i--) {
+				clk_disable(vidc_mmu_clks[i].mmu_clk);
+				clk_put(vidc_mmu_clks[i].mmu_clk);
+				vidc_mmu_clks[i].mmu_clk = NULL;
+			}
+			resource_context.mmu_clks_on = 0;
+			pr_err("%s() clocks enable failed", __func__);
+			break;
+		}
+	}
+	return ret;
+}
+
+int res_trk_disable_iommu_clocks(void)
+{
+	int i;
+	if (!resource_context.mmu_clks_on) {
+		pr_err(" %s: clks are already off", __func__);
+		return -EINVAL;
+	}
+	resource_context.mmu_clks_on = 0;
+	for (i = 0; i < ARRAY_SIZE(vidc_mmu_clks); i++) {
+		clk_disable(vidc_mmu_clks[i].mmu_clk);
+		clk_put(vidc_mmu_clks[i].mmu_clk);
+		vidc_mmu_clks[i].mmu_clk = NULL;
+	}
+	return 0;
+}
+
+void res_trk_secure_unset(void)
+{
+	mutex_lock(&resource_context.secure_lock);
+	resource_context.secure_session--;
+	mutex_unlock(&resource_context.secure_lock);
+}
+
+void res_trk_secure_set(void)
+{
+	mutex_lock(&resource_context.secure_lock);
+	resource_context.secure_session++;
+	mutex_unlock(&resource_context.secure_lock);
+}
+
+int res_trk_open_secure_session()
+{
+	int rc;
+
+	if (res_trk_check_for_sec_session() == 1) {
+		mutex_lock(&resource_context.secure_lock);
+		pr_err("Securing...\n");
+		rc = res_trk_enable_iommu_clocks();
+		if (rc) {
+			pr_err("IOMMU clock enabled failed while open");
+			goto error_open;
+		}
+		msm_ion_secure_heap(ION_HEAP(resource_context.memtype));
+		msm_ion_secure_heap(ION_HEAP(resource_context.cmd_mem_type));
+		res_trk_disable_iommu_clocks();
+		mutex_unlock(&resource_context.secure_lock);
+	}
+	return 0;
+error_open:
+	mutex_unlock(&resource_context.secure_lock);
+	return rc;
+}
+
+int res_trk_close_secure_session()
+{
+	int rc;
+	if (res_trk_check_for_sec_session() == 1) {
+		pr_err("Unsecuring....\n");
+		mutex_lock(&resource_context.secure_lock);
+		rc = res_trk_enable_iommu_clocks();
+		if (rc) {
+			pr_err("IOMMU clock enabled failed while close");
+			goto error_close;
+		}
+		msm_ion_unsecure_heap(ION_HEAP(resource_context.cmd_mem_type));
+		msm_ion_unsecure_heap(ION_HEAP(resource_context.memtype));
+		res_trk_disable_iommu_clocks();
+		mutex_unlock(&resource_context.secure_lock);
+	}
+	return 0;
+error_close:
+	mutex_unlock(&resource_context.secure_lock);
+	return rc;
+}
+
+u32 get_res_trk_perf_level(enum vcd_perf_level perf_level)
+{
+	u32 res_trk_perf_level;
+	switch (perf_level) {
+	case VCD_PERF_LEVEL0:
+		res_trk_perf_level = RESTRK_1080P_VGA_PERF_LEVEL;
+		break;
+	case VCD_PERF_LEVEL1:
+		res_trk_perf_level = RESTRK_1080P_720P_PERF_LEVEL;
+		break;
+	case VCD_PERF_LEVEL2:
+		res_trk_perf_level = RESTRK_1080P_MAX_PERF_LEVEL;
+		break;
+	default:
+		VCD_MSG_ERROR("Invalid perf level: %d\n", perf_level);
+		res_trk_perf_level = -EINVAL;
+	}
+	return res_trk_perf_level;
+}
+
+u32 res_trk_estimate_perf_level(u32 pn_perf_lvl)
+{
+	VCDRES_MSG_MED("%s(), req_perf_lvl = %d", __func__, pn_perf_lvl);
+	if ((pn_perf_lvl >= RESTRK_1080P_VGA_PERF_LEVEL) &&
+		(pn_perf_lvl < RESTRK_1080P_720P_PERF_LEVEL)) {
+		return RESTRK_1080P_720P_PERF_LEVEL;
+	} else if ((pn_perf_lvl >= RESTRK_1080P_720P_PERF_LEVEL) &&
+			(pn_perf_lvl < RESTRK_1080P_MAX_PERF_LEVEL)) {
+		return RESTRK_1080P_MAX_PERF_LEVEL;
+	} else {
+		return pn_perf_lvl;
+	}
+}

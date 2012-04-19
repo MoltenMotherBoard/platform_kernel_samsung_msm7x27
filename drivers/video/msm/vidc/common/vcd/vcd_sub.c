@@ -23,6 +23,116 @@
 #include "vdec_internal.h"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MAP_TABLE_SZ 64
+#define VCD_ENC_MAX_OUTBFRS_PER_FRAME 8
+#define MAX_DEC_TIME 33
+
+struct vcd_msm_map_buffer {
+	phys_addr_t phy_addr;
+	struct msm_mapped_buffer *mapped_buffer;
+	struct ion_handle *alloc_handle;
+	u32 in_use;
+};
+static struct vcd_msm_map_buffer msm_mapped_buffer_table[MAP_TABLE_SZ];
+static unsigned int vidc_mmu_subsystem[] = {MSM_SUBSYSTEM_VIDEO};
+
+static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr,
+			 struct vcd_clnt_ctxt *cctxt)
+{
+	u32 memtype, i = 0, flags = 0;
+	struct vcd_msm_map_buffer *map_buffer = NULL;
+	struct msm_mapped_buffer *mapped_buffer = NULL;
+	unsigned long iova = 0;
+	unsigned long buffer_size = 0;
+	int ret = 0;
+	unsigned long ionflag = 0;
+
+	if (!kernel_vaddr || !phy_addr || !cctxt) {
+		pr_err("\n%s: Invalid parameters", __func__);
+		goto bailout;
+	}
+	*phy_addr = NULL;
+	*kernel_vaddr = NULL;
+	for (i = 0; i  < MAP_TABLE_SZ; i++) {
+		if (!msm_mapped_buffer_table[i].in_use) {
+			map_buffer = &msm_mapped_buffer_table[i];
+			map_buffer->in_use = 1;
+			break;
+		}
+	}
+	if (!map_buffer) {
+		pr_err("%s() map table is full", __func__);
+		goto bailout;
+	}
+	res_trk_set_mem_type(DDL_MM_MEM);
+	memtype = res_trk_get_mem_type();
+	if (!cctxt->vcd_enable_ion) {
+		map_buffer->phy_addr = (phys_addr_t)
+		allocate_contiguous_memory_nomap(sz, memtype, SZ_4K);
+		if (!map_buffer->phy_addr) {
+			pr_err("%s() acm alloc failed", __func__);
+			goto free_map_table;
+		}
+		flags = MSM_SUBSYSTEM_MAP_IOVA | MSM_SUBSYSTEM_MAP_KADDR;
+		map_buffer->mapped_buffer =
+		msm_subsystem_map_buffer((unsigned long)map_buffer->phy_addr,
+		sz, flags, vidc_mmu_subsystem,
+		sizeof(vidc_mmu_subsystem)/sizeof(unsigned int));
+		if (IS_ERR(map_buffer->mapped_buffer)) {
+			pr_err(" %s() buffer map failed", __func__);
+			goto free_acm_alloc;
+		}
+		mapped_buffer = map_buffer->mapped_buffer;
+		if (!mapped_buffer->vaddr || !mapped_buffer->iova[0]) {
+			pr_err("%s() map buffers failed", __func__);
+			goto free_map_buffers;
+		}
+		*phy_addr = (u8 *) mapped_buffer->iova[0];
+		*kernel_vaddr = (u8 *) mapped_buffer->vaddr;
+	} else {
+		map_buffer->alloc_handle = ion_alloc(
+			    cctxt->vcd_ion_client, sz, SZ_4K,
+			    memtype);
+		if (!map_buffer->alloc_handle) {
+			pr_err("%s() ION alloc failed", __func__);
+			goto bailout;
+		}
+		if (ion_handle_get_flags(cctxt->vcd_ion_client,
+				map_buffer->alloc_handle,
+				&ionflag)) {
+			pr_err("%s() ION get flag failed", __func__);
+			goto bailout;
+		}
+		*kernel_vaddr = (u8 *) ion_map_kernel(
+				cctxt->vcd_ion_client,
+				map_buffer->alloc_handle,
+				ionflag);
+		if (!(*kernel_vaddr)) {
+			pr_err("%s() ION map failed", __func__);
+			goto ion_free_bailout;
+		}
+		ret = ion_map_iommu(cctxt->vcd_ion_client,
+				map_buffer->alloc_handle,
+				VIDEO_DOMAIN,
+				VIDEO_MAIN_POOL,
+				SZ_4K,
+				0,
+				(unsigned long *)&iova,
+				(unsigned long *)&buffer_size,
+				UNCACHED, 0);
+		if (ret) {
+			pr_err("%s() ION iommu map failed", __func__);
+			goto ion_map_bailout;
+		}
+		map_buffer->phy_addr = iova;
+		if (!map_buffer->phy_addr) {
+			pr_err("%s() acm alloc failed", __func__);
+			goto free_map_table;
+		}
+		*phy_addr = (u8 *)iova;
+		mapped_buffer = NULL;
+		map_buffer->mapped_buffer = NULL;
+	}
 
 static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr)
 {
@@ -1304,6 +1414,8 @@ u32 vcd_submit_frame(struct vcd_dev_ctxt *dev_ctxt,
 	struct vcd_buffer_entry *op_buf_entry = NULL;
 	u32 rc = VCD_S_SUCCESS;
 	u32 evcode = 0;
+	u32 perf_level = 0;
+	int decodeTime = 0;
 	struct ddl_frame_data_tag ddl_ip_frm;
 	struct ddl_frame_data_tag ddl_op_frm;
 
@@ -1318,6 +1430,16 @@ u32 vcd_submit_frame(struct vcd_dev_ctxt *dev_ctxt,
 	memset(&ddl_ip_frm, 0, sizeof(ddl_ip_frm));
 	memset(&ddl_op_frm, 0, sizeof(ddl_op_frm));
 	if (cctxt->decoding) {
+		decodeTime = ddl_get_core_decode_proc_time(cctxt->ddl_handle);
+		if (decodeTime > MAX_DEC_TIME) {
+			if (res_trk_get_curr_perf_level(&perf_level)) {
+				vcd_update_decoder_perf_level(dev_ctxt,
+				   res_trk_estimate_perf_level(perf_level));
+				ddl_reset_avg_dec_time(cctxt->ddl_handle);
+			} else
+				VCD_MSG_ERROR("%s(): retrieve curr_perf_level"
+						"returned FALSE\n", __func__);
+		}
 		evcode = CLIENT_STATE_EVENT_NUMBER(decode_frame);
 		ddl_ip_frm.vcd_frm = *ip_frm_entry;
 		rc = ddl_decode_frame(cctxt->ddl_handle, &ddl_ip_frm,

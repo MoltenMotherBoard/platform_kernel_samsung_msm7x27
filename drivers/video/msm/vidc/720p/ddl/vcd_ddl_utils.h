@@ -50,6 +50,10 @@ void ddl_calc_core_time(u8 codec);
 
 void ddl_reset_time_variables(u8 codec);
 
+int ddl_get_core_decode_proc_time(u32 *ddl_handle);
+
+void ddl_reset_avg_dec_time(u32 *ddl_handle);
+
 #define DDL_ASSERT(x)
 #define DDL_MEMSET(src, value, len) memset((src), (value), (len))
 #define DDL_MEMCPY(dest, src, len)  memcpy((dest), (src), (len))
