@@ -546,4 +546,48 @@ void mdp_hw_cursor_init(void);
 
 int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req);
 void mdp4_overlay_resource_release(void);
+void mdp4_overlay_dsi_video_wait4vsync(struct msm_fb_data_type *mfd);
+void mdp4_primary_vsync_dsi_video(void);
+uint32_t mdp4_ss_table_value(int8_t param, int8_t index);
+void mdp4_overlay_status_write(enum mdp4_overlay_status type, bool val);
+bool mdp4_overlay_status_read(enum mdp4_overlay_status type);
+void mdp4_overlay_ctrl_db_reset(void);
+
+int mdp4_overlay_writeback_on(struct platform_device *pdev);
+int mdp4_overlay_writeback_off(struct platform_device *pdev);
+void mdp4_writeback_overlay(struct msm_fb_data_type *mfd);
+void mdp4_writeback_kickoff_video(struct msm_fb_data_type *mfd,
+		struct mdp4_overlay_pipe *pipe);
+void mdp4_writeback_dma_busy_wait(struct msm_fb_data_type *mfd);
+void mdp4_overlay1_done_writeback(struct mdp_dma_data *dma);
+void mdp4_dma_e_done_dtv(void);
+
+int mdp4_writeback_start(struct fb_info *info);
+int mdp4_writeback_stop(struct fb_info *info);
+int mdp4_writeback_dequeue_buffer(struct fb_info *info,
+		struct msmfb_data *data);
+int mdp4_writeback_queue_buffer(struct fb_info *info,
+		struct msmfb_data *data);
+void mdp4_writeback_dma_stop(struct msm_fb_data_type *mfd);
+int mdp4_writeback_init(struct fb_info *info);
+int mdp4_writeback_terminate(struct fb_info *info);
+
+uint32_t mdp_block2base(uint32_t block);
+int mdp_hist_lut_config(struct mdp_hist_lut_data *data);
+
+void mdp4_hsic_set(struct mdp4_overlay_pipe *pipe, struct dpp_ctrl *ctrl);
+void mdp4_hsic_update(struct mdp4_overlay_pipe *pipe);
+int mdp4_csc_config(struct mdp_csc_cfg_data *config);
+void mdp4_csc_write(struct mdp_csc_cfg *data, uint32_t base);
+int mdp4_csc_enable(struct mdp_csc_cfg_data *config);
+int mdp4_pcc_cfg(struct mdp_pcc_cfg_data *cfg_ptr);
+int mdp4_argc_cfg(struct mdp_pgc_lut_data *pgc_ptr);
+int mdp4_qseed_cfg(struct mdp_qseed_cfg_data *cfg);
+u32  mdp4_allocate_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);
+void mdp4_init_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);
+void mdp4_free_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);
+
+int mdp4_igc_lut_config(struct mdp_igc_lut_data *cfg);
+void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe);
+void mdp4_iommu_attach(void);
 #endif /* MDP_H */
