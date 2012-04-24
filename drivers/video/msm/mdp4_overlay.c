@@ -1789,13 +1789,40 @@ static uint32 mdp4_overlay_get_perf_level(uint32 width, uint32 height,
 			return OVERLAY_PERF_LEVEL1;
 	}
 
-	if (format == MDP_Y_CRCB_H2V2_TILE ||
-		format == MDP_Y_CBCR_H2V2_TILE)
-		size_720p = OVERLAY_720P_TILE_SIZE;
-	if (width*height <= OVERLAY_VGA_SIZE)
-		return OVERLAY_PERF_LEVEL3;
-	else if (width*height <= size_720p)
-		return OVERLAY_PERF_LEVEL2;
+	if (mdp4_extn_disp)
+		return OVERLAY_PERF_LEVEL1;
+
+	if (req->flags & (MDP_DEINTERLACE | MDP_BACKEND_COMPOSITION))
+		return OVERLAY_PERF_LEVEL1;
+
+	for (i = 0, cnt = 0; i < OVERLAY_PIPE_MAX; i++) {
+		if (ctrl->plist[i].pipe_used && ++cnt > 2)
+			return OVERLAY_PERF_LEVEL1;
+	}
+
+	if (mdp4_overlay_is_rgb_type(req->src.format) && is_fg &&
+		((req->src.width * req->src.height) <= OVERLAY_WSVGA_SIZE))
+		return OVERLAY_PERF_LEVEL4;
+	else if (mdp4_overlay_is_rgb_type(req->src.format))
+		return OVERLAY_PERF_LEVEL1;
+
+	if (req->src.width*req->src.height <= OVERLAY_VGA_SIZE) {
+		if (mfd->mdp_rev >= MDP_REV_42)
+			return OVERLAY_PERF_LEVEL4;
+		else
+			return OVERLAY_PERF_LEVEL3;
+
+	} else if (req->src.width*req->src.height <= OVERLAY_720P_TILE_SIZE) {
+		u32 max, min;
+		max = (req->dst_rect.h > req->dst_rect.w) ?
+			req->dst_rect.h : req->dst_rect.w;
+		min = (mfd->panel_info.yres > mfd->panel_info.xres) ?
+			mfd->panel_info.xres : mfd->panel_info.yres;
+		if (max > min)	/* landscape mode */
+			return OVERLAY_PERF_LEVEL3;
+		else		/* potrait mode */
+			return OVERLAY_PERF_LEVEL2;
+	}
 	else
 		return OVERLAY_PERF_LEVEL1;
 }
@@ -2066,10 +2093,24 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req,
 	} else {
 		/* primary interface */
 		ctrl->mixer0_played++;
-		if (ctrl->panel_mode & MDP4_PANEL_LCDC)
-			mdp4_overlay_vsync_push(mfd, pipe);
-		else if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO)
-			mdp4_overlay_reg_flush(pipe, 1);
+		if (ctrl->panel_mode & MDP4_PANEL_LCDC) {
+			mdp4_overlay_reg_flush(pipe, 0);
+			mdp4_overlay_lcdc_start();
+			mdp4_overlay_lcdc_vsync_push(mfd, pipe);
+			if (!mfd->use_ov0_blt &&
+					!(pipe->flags & MDP_OV_PLAY_NOWAIT))
+				mdp4_overlay_update_blt_mode(mfd);
+		}
+#ifdef CONFIG_FB_MSM_MIPI_DSI
+		else if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO) {
+			mdp4_overlay_reg_flush(pipe, 0);
+			mdp4_overlay_dsi_video_start();
+			mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
+			if (!mfd->use_ov0_blt &&
+					!(pipe->flags & MDP_OV_PLAY_NOWAIT))
+				mdp4_overlay_update_blt_mode(mfd);
+		}
+#endif
 		else {
 			/* mddi & mipi dsi cmd mode */
 			if (pipe->flags & MDP_OV_PLAY_NOWAIT) {
