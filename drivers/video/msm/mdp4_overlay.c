@@ -974,7 +974,61 @@ int mdp4_overlay_pipe_staged(int mixer)
 		return p1;
 }
 
-void mdp4_mixer_stage_up(struct mdp4_overlay_pipe *pipe)
+int mdp4_mixer_info(int mixer_num, struct mdp_mixer_info *info)
+{
+
+	int ndx, cnt;
+	struct mdp4_overlay_pipe *pipe;
+
+	if (mixer_num > MDP4_MIXER_MAX)
+		return -ENODEV;
+
+	cnt = 0;
+	ndx = 1; /* ndx 0 if not used */
+
+	for ( ; ndx < MDP4_MIXER_STAGE_MAX; ndx++) {
+		pipe = ctrl->stage[mixer_num][ndx];
+		if (pipe == NULL)
+			continue;
+		info->z_order = pipe->mixer_stage - MDP4_MIXER_STAGE0;
+		info->ptype = pipe->pipe_type;
+		info->pnum = pipe->pipe_num;
+		info->pndx = pipe->pipe_ndx;
+		info->mixer_num = pipe->mixer_num;
+		info++;
+		cnt++;
+	}
+	return cnt;
+}
+
+static void mdp4_overlay_bg_solidfill_clear(uint32 mixer_num)
+{
+	struct mdp4_overlay_pipe *bg_pipe;
+	unsigned char *rgb_base;
+	uint32 rgb_src_format;
+	int pnum;
+
+	bg_pipe = mdp4_overlay_stage_pipe(mixer_num,
+		MDP4_MIXER_STAGE_BASE);
+	if (bg_pipe && bg_pipe->pipe_type == OVERLAY_TYPE_BF) {
+		bg_pipe = mdp4_overlay_stage_pipe(mixer_num,
+				MDP4_MIXER_STAGE0);
+	}
+
+	if (bg_pipe && bg_pipe->pipe_type == OVERLAY_TYPE_RGB) {
+		rgb_src_format = mdp4_overlay_format(bg_pipe);
+		if (!(rgb_src_format & MDP4_FORMAT_SOLID_FILL)) {
+			pnum = bg_pipe->pipe_num - OVERLAY_PIPE_RGB1;
+			rgb_base = MDP_BASE + MDP4_RGB_BASE;
+			rgb_base += MDP4_RGB_OFF * pnum;
+			outpdw(rgb_base + 0x50, rgb_src_format);
+			outpdw(rgb_base + 0x0058, bg_pipe->op_mode);
+			mdp4_overlay_reg_flush(bg_pipe, 0);
+		}
+	}
+}
+
+static void mdp4_mixer_stage_commit(int mixer)
 {
 	uint32 data, mask, snum, stage, mixer, pnum;
 
@@ -1784,7 +1838,19 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 #endif
 	}
 
-	mdp4_mixer_stage_down(pipe);
+	if (mfd->mdp_rev >= MDP_REV_41 &&
+		mdp4_overlay_is_rgb_type(pipe->src_format) &&
+		!mfd->use_ov0_blt && (pipe->mixer_num == MDP4_MIXER0 ||
+		hdmi_prim_display)) {
+			ctrl->stage[pipe->mixer_num][pipe->mixer_stage] = NULL;
+	} else {
+		if (pipe->is_fg &&
+			!mdp4_overlay_is_rgb_type(pipe->src_format)) {
+			mdp4_overlay_bg_solidfill_clear(pipe->mixer_num);
+			pipe->is_fg = 0;
+		}
+
+		mdp4_mixer_stage_down(pipe);
 
 	if (pipe->mixer_num == MDP4_MIXER0) {
 #ifdef CONFIG_FB_MSM_MIPI_DSI
