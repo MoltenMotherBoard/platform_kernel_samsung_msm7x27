@@ -285,7 +285,18 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 		ERR("vid_dec_output_frame_done UVA can not be found\n");
 		vdec_msg->vdec_msg_info.status_code = VDEC_S_EFATAL;
 	}
-
+	if (vcd_frame_data->data_len > 0) {
+		ion_flag = vidc_get_fd_info(client_ctx, BUFFER_TYPE_OUTPUT,
+				pmem_fd, kernel_vaddr, buffer_index,
+				&buff_handle);
+		if (ion_flag == CACHED && buff_handle) {
+			msm_ion_do_cache_op(client_ctx->user_ion_client,
+					buff_handle,
+					(unsigned long *) kernel_vaddr,
+					(unsigned long)vcd_frame_data->data_len,
+					ION_IOC_INV_CACHES);
+		}
+	}
 	mutex_lock(&client_ctx->msg_queue_lock);
 	list_add_tail(&vdec_msg->list, &client_ctx->msg_queue);
 	mutex_unlock(&client_ctx->msg_queue_lock);
@@ -1060,7 +1071,23 @@ static u32 vid_dec_decode_frame(struct video_client_ctx *client_ctx,
 		vcd_input_buffer.time_stamp = input_frame_info->timestamp;
 		/* Rely on VCD using the same flags as OMX */
 		vcd_input_buffer.flags = input_frame_info->flags;
-
+		vcd_input_buffer.desc_buf = desc_buf;
+		vcd_input_buffer.desc_size = desc_size;
+		if (vcd_input_buffer.data_len > 0) {
+			ion_flag = vidc_get_fd_info(client_ctx,
+						BUFFER_TYPE_INPUT,
+						pmem_fd,
+						kernel_vaddr,
+						buffer_index,
+						&buff_handle);
+			if (ion_flag == CACHED && buff_handle) {
+				msm_ion_do_cache_op(client_ctx->user_ion_client,
+				buff_handle,
+				(unsigned long *)kernel_vaddr,
+				(unsigned long) vcd_input_buffer.data_len,
+				ION_IOC_CLEAN_CACHES);
+			}
+		}
 		vcd_status = vcd_decode_frame(client_ctx->vcd_handle,
 					      &vcd_input_buffer);
 		if (!vcd_status)
