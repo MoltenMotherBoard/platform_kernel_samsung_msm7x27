@@ -317,9 +317,16 @@ enum msm_ssbi_controller_type {
 	MSM_SBI_CTRL_PMIC_ARBITER,
 };
 
-struct msm_ssbi_platform_data {
-	const char *rsl_id;
-	enum msm_ssbi_controller_type controller_type;
+struct msm_vidc_platform_data {
+	int memtype;
+	u32 enable_ion;
+	int disable_dmx;
+	int disable_fullhd;
+	u32 cp_enabled;
+#ifdef CONFIG_MSM_BUS_SCALING
+	struct msm_bus_scale_pdata *vidc_bus_client_pdata;
+#endif
+	int cont_mode_dpb_count;
 };
 
 #ifdef CONFIG_USB_PEHCI_HCD

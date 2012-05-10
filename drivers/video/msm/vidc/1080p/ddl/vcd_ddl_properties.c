@@ -1594,6 +1594,10 @@ u32 ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 		return false;
 	min_dpb = ddl_decoder_min_num_dpb(decoder);
 	if (estimate) {
+		if (!decoder->cont_mode)
+			min_dpb = ddl_decoder_min_num_dpb(decoder);
+		else
+			min_dpb = res_trk_get_min_dpb_count();
 		frame_size = &decoder->client_frame_size;
 		output_buf_req = &decoder->client_output_buf_req;
 		input_buf_req = &decoder->client_input_buf_req;
