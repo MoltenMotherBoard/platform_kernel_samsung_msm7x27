@@ -147,5 +147,21 @@ void vidc_sm_set_encoder_new_i_period(struct ddl_buf_addr *shared_mem,
 	u32 new_i_period);
 void vidc_sm_set_encoder_init_rc_value(struct ddl_buf_addr *shared_mem,
 	u32 new_rc_value);
-
+void vidc_sm_set_idr_decode_only(struct ddl_buf_addr *shared_mem,
+	u32 enable);
+void vidc_sm_set_concealment_color(struct ddl_buf_addr *shared_mem,
+	u32 conceal_ycolor, u32 conceal_ccolor);
+void vidc_sm_set_chroma_addr_change(struct ddl_buf_addr *shared_mem,
+	u32 addr_change);
+void vidc_sm_set_mpeg4_profile_override(struct ddl_buf_addr *shared_mem,
+	enum vidc_sm_mpeg4_profileinfo profile_info);
+void vidc_sm_set_decoder_sei_enable(struct ddl_buf_addr *shared_mem,
+	u32 sei_enable);
+void vidc_sm_get_decoder_sei_enable(struct ddl_buf_addr *shared_mem,
+	u32 *sei_enable);
+void vidc_sm_set_decoder_stuff_bytes_consumption(
+	struct ddl_buf_addr *shared_mem,
+	enum vidc_sm_num_stuff_bytes_consume_info consume_info);
+void vidc_sm_set_video_core_timeout_value(struct ddl_buf_addr *shared_mem,
+	u32 timeout);
 #endif
