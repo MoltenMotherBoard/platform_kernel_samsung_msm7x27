@@ -20,6 +20,11 @@ ifeq ($(CONFIG_MACH_COOPER),y)
 params_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x13600100
 initrd_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x14600000
 endif
+ifeq ($(CONFIG_MACH_GIO),y)
+   zreladdr-$(CONFIG_ARCH_MSM7X27)	:= 0x13608000
+params_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x13600100
+initrd_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x14600000
+endif
 ifeq ($(CONFIG_MACH_BENI),y)
    zreladdr-$(CONFIG_ARCH_MSM7X27)	:= 0x13608000
 params_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x13600100

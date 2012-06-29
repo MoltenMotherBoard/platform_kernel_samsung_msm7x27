@@ -179,6 +179,14 @@ config MACH_BENI
 	help
 	  Support for the Samsung Beni board.
 
+config MACH_GIO
+	depends on ARCH_MSM7X27
+	depends on !MSM_STACKED_MEMORY
+	default n
+	bool "Gio"
+	help
+	  Support for the Samsung Gio board.
+
 config MACH_TASS
 	depends on ARCH_MSM7X27
 	depends on !MSM_STACKED_MEMORY
@@ -205,7 +213,7 @@ config MACH_LUCAS
 	  
 config BOARD_REVISION
 	hex "Select H/W Revision"
-	depends on MACH_EUROPA || MACH_CALLISTO || MACH_COOPER || MACH_BENI || MACH_TASS || MACH_LUCAS || MACH_COOPER_CHN_CU || MACH_TASS_CHN_CU
+	depends on MACH_EUROPA || MACH_CALLISTO || MACH_COOPER || MACH_GIO || MACH_BENI || MACH_TASS || MACH_LUCAS || MACH_COOPER_CHN_CU || MACH_TASS_CHN_CU
 	default "0x01"
 
 config 800MHZ
@@ -448,7 +456,8 @@ config PHYS_OFFSET
 	default "0x13600000" if !MSM_STACKED_MEMORY && MACH_TASS_CHN_CU
 	default "0x13600000" if !MSM_STACKED_MEMORY && MACH_BENI
 	default "0x13600000" if !MSM_STACKED_MEMORY && MACH_TASS	
-	default "0x13600000" if !MSM_STACKED_MEMORY && MACH_LUCAS	
+	default "0x13600000" if !MSM_STACKED_MEMORY && MACH_LUCAS
+	default "0x13600000" if !MSM_STACKED_MEMORY && MACH_GIO	
 	default "0x00200000" if !MSM_STACKED_MEMORY && MACH_EUROPA
 	default "0x00000000" if ARCH_QSD8X50 && MSM_SOC_REV_A
 	default "0x20000000" if ARCH_QSD8X50

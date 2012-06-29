@@ -10,6 +10,8 @@
 #include "board-tass.c"
 #elif defined(CONFIG_MACH_LUCAS)
 #include "board-lucas.c"
+#elif defined(CONFIG_MACH_GIO)
+#include "board-gio.c"
 #else
 #include "board-msm7x27_org.c"
 #endif

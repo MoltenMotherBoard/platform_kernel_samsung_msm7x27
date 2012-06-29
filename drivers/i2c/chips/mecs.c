@@ -270,7 +270,7 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 //			printk(KERN_INFO"Mecs.c :: Proximity = %d\n", ypr[12]);
 			input_report_abs(ecs_data_device, ABS_DISTANCE, ypr[12]);
 		}
-#elif defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#elif defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 		/* Report proximity information */
 		if (atomic_read(&p_flag)) {
 			ypr[12] = taos_get_proximity_value();

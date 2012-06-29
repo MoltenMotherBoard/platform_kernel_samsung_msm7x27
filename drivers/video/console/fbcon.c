@@ -3523,7 +3523,7 @@ static void fbcon_exit(void)
 #define FB_LINE_LENGTH	(240*2)
 #if defined(CONFIG_MACH_CALLISTO)
 #define FB_Y_SIZE	400
-#elif defined(CONFIG_MACH_COOPER)
+#elif defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 #define FB_Y_SIZE	480
 #elif defined(CONFIG_MACH_LUCAS)
 #define FB_Y_SIZE	400

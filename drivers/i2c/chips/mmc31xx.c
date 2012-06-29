@@ -145,7 +145,7 @@ static ssize_t mmc31xx_fs_read(struct device *dev, struct device_attribute *attr
 	// Write 0x00000010 to 0x00000000
 
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{
 		data[0] = MMC32XX_REG_CTRL;      
@@ -169,7 +169,7 @@ static ssize_t mmc31xx_fs_read(struct device *dev, struct device_attribute *attr
 	}
 	/* wait external capacitor charging done for next SET/RESET */
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 )
 	{
 		msleep(MMC32XX_DELAY_RM);	
@@ -185,7 +185,7 @@ static ssize_t mmc31xx_fs_read(struct device *dev, struct device_attribute *attr
 #endif		
 
 	/* [HSS] Charge pump reset before TM command (MMC3280) */
-#if defined(CONFIG_MACH_COOPER)	
+#if defined(CONFIG_MACH_COOPER)	|| defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{
 		data[0] = MMC32XX_REG_CTRL;        
@@ -199,7 +199,7 @@ static ssize_t mmc31xx_fs_read(struct device *dev, struct device_attribute *attr
 #endif
 	// Write 0x00000001 to 0x00000000
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{	
       	data[0] = MMC32XX_REG_CTRL;      
@@ -222,7 +222,7 @@ static ssize_t mmc31xx_fs_read(struct device *dev, struct device_attribute *attr
 	/* wait TM done for coming data read */
 
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{
 		msleep(MMC32XX_DELAY_TM);	   
@@ -244,7 +244,7 @@ static ssize_t mmc31xx_fs_read(struct device *dev, struct device_attribute *attr
 		return 0;
 	}
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 	
 	{
 		vec[0] = data[1] << 8 | data[0];
@@ -292,7 +292,7 @@ static ssize_t mmc31xx_power_on(struct device *dev, struct device_attribute *att
 	int res = 0;
 
 	/* [HSS] Charge pump reset before TM command (MMC3280) */
-#if defined(CONFIG_MACH_COOPER)	
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{
 		data[0] = MMC32XX_REG_CTRL;        
@@ -306,7 +306,7 @@ static ssize_t mmc31xx_power_on(struct device *dev, struct device_attribute *att
 #endif
 
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{	
        	data[0] = MMC32XX_REG_CTRL;      
@@ -329,7 +329,7 @@ static ssize_t mmc31xx_power_on(struct device *dev, struct device_attribute *att
 
 	/* wait TM done for coming data read */
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 	
 	{	
 		msleep(MMC32XX_DELAY_TM);
@@ -377,7 +377,7 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 	switch (cmd) {
 	case MMC31XX_IOC_TM:
 	/* [HSS] Charge pump reset before TM command (MMC3280) */
-#if defined(CONFIG_MACH_COOPER)	
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{
 		data[0] = MMC32XX_REG_CTRL;        
@@ -390,7 +390,7 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 	mmc31xx_i2c_tx_data(data, 2);
 #endif	
        	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
        	if ( board_hw_revision >= 2 ) 
        	{	
           	data[0] = MMC32XX_REG_CTRL;      
@@ -413,7 +413,7 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 		}
 		/* wait TM done for coming data read */
 		/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 		if ( board_hw_revision >= 2 ) 	
 		{
 			msleep(MMC32XX_DELAY_TM);
@@ -458,7 +458,7 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 		break;		
 	case MMC31XX_IOC_READ:
      	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
       	if ( board_hw_revision >= 2 ) 
       	{   
           	data[0] = MMC32XX_REG_DATA;      
@@ -476,7 +476,7 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 			return -EFAULT;
 		}
 		/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 		if ( board_hw_revision >= 2 ) 	
 		{		
 				vec[0] = data[1] << 8 | data[0];
@@ -508,8 +508,8 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 		break;
 	case MMC31XX_IOC_READXYZ:
 		/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if (defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS))
-#if defined(CONFIG_MACH_COOPER)
+#if (defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS))
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 		if ( board_hw_revision >= 2 ) /* [HSS] H/W REV >= 2 (REV0.1) :  MMC3280 */ 	
 		{
 #endif	// CONFIG_MACH_COOPER
@@ -577,7 +577,7 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 			if (copy_to_user(pa, vec, sizeof(vec))) {
 				return -EFAULT;
 			}
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 		}
 		else     /* [HSS] H/W REV < 2 (REV0.1) :  MMC3140 */
 #endif	// CONFIG_MACH_COOPER
@@ -653,7 +653,7 @@ static int mmc31xx_ioctl(struct inode *inode, struct file *file,
 				return -EFAULT;
 			}
 		}
-#endif	// (defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS))
+#endif	// (defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS))
 		break;
 	default:
 		break;
@@ -696,7 +696,7 @@ int mmc31xx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	printk(KERN_ERR "[mmc31xx_probe] +\n");
 	
 /* [HSS] PMIC LDO depends on each model's H/W. */
-#if defined(CONFIG_MACH_COOPER)	
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
   	/* [HSS] [Cooper] PMIC LDO Change - VLCD_3.0V : ldo3 => ldo4 (REV0.2) */
 	if(board_hw_revision < 5)
 	{
@@ -740,7 +740,7 @@ int mmc31xx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		if(vreg_enable(mmc31xx_vreg))
 			printk(KERN_ERR "vreg_enable: VLCD_3.0V vreg operation failed\n");
 	}
-#elif defined(CONFIG_MACH_COOPER)
+#elif defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if(board_hw_revision < 5) {
 		if(vreg_enable(mmc31xx_vreg))
 			printk(KERN_ERR "vreg_enable: VLCD_3.0V operation failed\n");
@@ -752,7 +752,7 @@ int mmc31xx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	/* send ST cmd to mag sensor first of all */
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{
       	data[0] = MMC32XX_REG_CTRL;      
@@ -777,7 +777,7 @@ int mmc31xx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 	/* wait external capacitor charging done for next SET/RESET */
 	/* [HSS][Cooper] Magnetic sensor change : MMC3140 -> MMC3280 (since REV0.1) */	
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if ( board_hw_revision >= 2 ) 
 	{
 		msleep(MMC32XX_DELAY_RM);
@@ -816,7 +816,7 @@ static int mmc31xx_suspend(struct i2c_client *client, pm_message_t mesg)
 	struct vreg *mmc31xx_vreg;
   
 /* [HSS] PMIC LDO depends on each model's H/W. */  
-#if defined(CONFIG_MACH_COOPER)	
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
   	/* [HSS] [Cooper] PMIC LDO Change - VLCD_3.0V : ldo3 => ldo4 (REV0.2) */
 	if(board_hw_revision < 5) {
 		if(board_hw_revision >= 3)
@@ -840,7 +840,7 @@ static int mmc31xx_suspend(struct i2c_client *client, pm_message_t mesg)
 		if(vreg_disable(mmc31xx_vreg))
 			printk(KERN_ERR "vreg_disable: VLCD_3.0V vreg operation failed\n");
 	}
-#elif defined(CONFIG_MACH_COOPER)
+#elif defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if(board_hw_revision < 5) {
 		if(vreg_disable(mmc31xx_vreg))
 			printk(KERN_ERR "vreg_disable: VLCD_3.0V vreg operation failed\n");
@@ -862,7 +862,7 @@ static int mmc31xx_resume(struct i2c_client *client)
 	struct vreg *mmc31xx_vreg;
 
 /* [HSS] PMIC LDO depends on each model's H/W. */
-#if defined(CONFIG_MACH_COOPER)	
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
   	/* [HSS] [Cooper] PMIC LDO Change - VLCD_3.0V : ldo3 => ldo4 (REV0.2) */
 	if(board_hw_revision < 5) {
 		if(board_hw_revision >= 3)
@@ -886,7 +886,7 @@ static int mmc31xx_resume(struct i2c_client *client)
 		if(vreg_enable(mmc31xx_vreg))
 			printk(KERN_ERR "vreg_enable: VLCD_3.0V vreg operation failed\n");			
 	}
-#elif defined(CONFIG_MACH_COOPER)
+#elif defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 	if(board_hw_revision < 5) {
 		if(vreg_enable(mmc31xx_vreg))
 			printk(KERN_ERR "vreg_enable: VLCD_3.0V vreg operation failed\n");			

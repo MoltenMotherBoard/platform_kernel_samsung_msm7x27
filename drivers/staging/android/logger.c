@@ -771,7 +771,7 @@ static struct struct_marks_ver_mark marks_ver_mark = {
   .second_size=0,
 .second_start_addr=0
 #endif	// CONFIG_MACH_EUROPA
-#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
   .this=&marks_ver_mark,
 
   .first_size=256*1024*1024,
@@ -800,7 +800,7 @@ static int __init logger_init(void)
 	plat_log_mark.p_radio  = _buf_log_radio+0x200000;
 	plat_log_mark.p_events = _buf_log_events+0x200000;
 #endif	// CONFIG_MACH_EUROPA
-#if defined(CONFIG_MACH_CALLISTO)  || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_CALLISTO)  || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 	plat_log_mark.p_main   = _buf_log_main;
 	plat_log_mark.p_radio  = _buf_log_radio;
 	plat_log_mark.p_events = _buf_log_events;

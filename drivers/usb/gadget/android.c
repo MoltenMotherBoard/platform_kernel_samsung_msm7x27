@@ -671,6 +671,8 @@ void get_usb_serial(char *usb_serial_number)
 	sprintf(temp_serial_number,"S5570%08x",unique_serial_number);
 #elif defined(CONFIG_MACH_LUCAS)
 	sprintf(temp_serial_number,"B7510%08x",unique_serial_number);
+#elif defined(CONFIG_MACH_GIO)
+	sprintf(temp_serial_number,"S5660%08x",unique_serial_number);
 #endif
 	strcpy(usb_serial_number,temp_serial_number);
 }

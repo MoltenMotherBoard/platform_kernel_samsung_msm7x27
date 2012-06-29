@@ -528,7 +528,7 @@ signed char fReadStatus(void)
 // ============================================================================
 signed char fReadWriteSetup(void)
 {
-#if defined(CONFIG_MACH_BENI)||defined(CONFIG_MACH_TASS) ||defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_BENI)||defined(CONFIG_MACH_TASS) ||defined(CONFIG_MACH_COOPER) ||defined(CONFIG_MACH_GIO)
 	SendVector(tsync_enable, num_bits_tsync_enable);
 #endif
 	SendVector(read_write_setup, num_bits_read_write_setup);

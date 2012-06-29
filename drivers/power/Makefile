@@ -58,3 +58,6 @@ endif
 ifeq ($(CONFIG_MACH_CALLISTO),y)
 obj-$(CONFIG_BATTERY_MSM)	+= callisto_battery.o
 endif
+ifeq ($(CONFIG_MACH_GIO),y)
+obj-$(CONFIG_BATTERY_MSM)	+= gio_battery.o
+endif

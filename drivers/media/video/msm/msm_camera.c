@@ -1,3 +1,7 @@
+#if defined(CONFIG_MACH_GIO)
+#include "msm_camera_gio.c"
+#else
+
 /* Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -44,6 +48,8 @@
 #include "s5k5caff_rough.h"
 #elif defined(CONFIG_MACH_COOPER)
 void sensor_ext_config(void __user *arg);
+#elif defined(CONFIG_MACH_GIO)
+void sensor_rough_control(void __user *arg);
 #elif defined(CONFIG_MACH_BENI)
 #include "s5k4ecgx_rough.h"
 #elif defined(CONFIG_MACH_LUCAS)
@@ -915,7 +921,7 @@ static int msm_control(struct msm_control_device *ctrl_pmsm,
 	uptr = udata->value;
 	udata->value = data;
 
-#if defined (CONFIG_MACH_COOPER)
+#if defined (CONFIG_MACH_COOPER) || defined (CONFIG_MACH_GIO)
 	if (udata->type == CAMERA_STOP_SNAPSHOT)sync->get_pic_abort = 1;
 #endif
 	qcmd->type = MSM_CAM_Q_CTRL;
@@ -2415,7 +2421,7 @@ static long msm_ioctl_control(struct file *filep, unsigned int cmd,
 	case MSM_CAM_IOCTL_GET_CAMERA_INFO:
 		rc = msm_get_camera_info(argp);
 		break;
-#if defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_LUCAS) || defined(CONFIG_MACH_CALLISTO)
+#if defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_LUCAS) || defined (CONFIG_MACH_GIO) || defined(CONFIG_MACH_CALLISTO)
     case MSM_CAM_IOCTL_PCAM_CTRL_8BIT:
         sensor_rough_control(argp);
         rc = 0;
@@ -3365,3 +3371,5 @@ int msm_camera_drv_start(struct platform_device *dev,
 	return rc;
 }
 EXPORT_SYMBOL(msm_camera_drv_start);
+
+#endif

@@ -36,11 +36,26 @@ MODULE_LICENSE("GPL");
 
 #define CAM_FLASH_ENSET 1
 #define CAM_FLASH_FLEN 2
-
+int state;
 static dev_t ledflash_dev;
 static struct cdev ledflash_cdev;
 static int ledflash_major = 230, ledflash_minor = 0;
 struct class *ledflash_class;
+
+static int atoi(const char *name)
+{
+        int val = 0;
+
+        for (;; name++) {
+                switch (*name) {
+                case '0' ... '9':
+                        val = 10*val+(*name-'0');
+                        break;
+                default:
+                        return val;
+                }
+        }
+}
 
 static int ledflash_open(struct inode *inode, struct file *file)
 {
@@ -57,34 +72,26 @@ static int ledflash_close(struct inode *inode, struct file *file)
 static ssize_t ledflash_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int count = 0;  
-	int i = 0;
-	printk("[HCHYUN] %s\n", __func__);
-	/* initailize falsh IC */
-	gpio_set_value(CAM_FLASH_ENSET,0); 
-	gpio_set_value(CAM_FLASH_FLEN,0);
-	mdelay(1); // to enter a shutdown mode
 	
-	/* set to movie mode */
-	for(i=0;i<8;i++)
-	{
-		udelay(1);
-		gpio_set_value(CAM_FLASH_ENSET,1);
-		udelay(1);
-		gpio_set_value(CAM_FLASH_ENSET,0);
-	}
-	gpio_set_value(CAM_FLASH_ENSET,1); //value set
-	count = sprintf(buf,"ledflash_read called\n");
+	count = sprintf(buf,"%d\n", state);
 	
 	return count;
 }
 
 static ssize_t ledflash_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
-	printk("[HCHYUN] %s\n", __func__);
-	/* initailize falsh IC */
-	gpio_set_value(CAM_FLASH_ENSET,0);
-	gpio_set_value(CAM_FLASH_FLEN,0);
-	mdelay(1); // to enter a shutdown mode
+  
+	int value;
+	
+	value = atoi(buf);
+	
+	if(value)
+	{
+	  gpio_set_value(CAM_FLASH_ENSET,1); //value set
+	} else {
+	  gpio_set_value(CAM_FLASH_ENSET,0);
+	  gpio_set_value(CAM_FLASH_FLEN,0);
+	}
 	
 	return size;
 }
@@ -108,6 +115,8 @@ static ssize_t samsung_factorytest_camflash_on (struct file *flip,  char __user 
 	}
 	gpio_set_value(CAM_FLASH_ENSET,1); //value set
 	
+	
+	
 	return count;
 }
 
@@ -130,7 +139,7 @@ static const struct file_operations ledflash_fops = {
 	.release = ledflash_close,
 };
 
-static DEVICE_ATTR(ledflash_file, S_IRUGO, NULL, NULL);
+static DEVICE_ATTR(ledflash_file, S_IRUGO | S_IWUGO, ledflash_read, ledflash_write);
 
 static int ledflash_register_cdev(void)
 {
@@ -186,7 +195,7 @@ static int ledflash_init(void)
 	if (IS_ERR(dev_t)) {
 		return PTR_ERR(dev_t);
 	}
-
+	state = 0;
 	return 0;
 }
 

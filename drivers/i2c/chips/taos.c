@@ -130,6 +130,9 @@
 #elif defined(CONFIG_MACH_TASS)
 	#define PRX_THRSH_HI_PARAM		600
 	#define PRX_THRSH_LO_PARAM		450
+#elif defined(CONFIG_MACH_GIO) // Gio
+	#define PRX_THRSH_HI_PARAM		600
+	#define PRX_THRSH_LO_PARAM		450
 #else			
 	#define PRX_THRSH_HI_PARAM		0x2BC // 700
 	#define PRX_THRSH_LO_PARAM		0x226 // 600
@@ -143,6 +146,8 @@
 #define PRX_PULSE_CNT_PARAM		0x0A //0x0F
 #elif defined(CONFIG_MACH_TASS)
 #define PRX_PULSE_CNT_PARAM		0x0A
+#elif defined(CONFIG_MACH_GIO) // Gio
+#define PRX_PULSE_CNT_PARAM		0x08
 #else
 #define PRX_PULSE_CNT_PARAM		0x08
 #endif
@@ -603,7 +608,7 @@ static int taos_opt_probe(struct i2c_client *client,
 	printk(KERN_INFO "%s\n",__FUNCTION__);
 #endif
 /* [HSS] PMIC LDO depends on each model's H/W. */
-#if defined(CONFIG_MACH_COOPER)	
+#if defined(CONFIG_MACH_COOPER)	|| defined(CONFIG_MACH_GIO)
   	/* [HSS] [Cooper] PMIC LDO Change - VLCD_3.0V : ldo3 => ldo4 (REV0.2) */
 	if(board_hw_revision >= 3)
 		vreg_proximity = vreg_get(0, "ldo4");

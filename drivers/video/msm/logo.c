@@ -68,7 +68,7 @@ int load_565rle_image_onfb( char *filename, int start_x, int start_y)
 	unsigned count, max;
 	unsigned short *data, *bits, *ptr;
 	struct fb_info *info;
-#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 	unsigned short *p_line; // minhyo0512
 	unsigned short sp, c_pixel; // minhyo0512
 	unsigned draw_pixel;
@@ -114,7 +114,7 @@ int load_565rle_image_onfb( char *filename, int start_x, int start_y)
 //	printk("====minhyodebug:info->fix.line_length=%d, \n", info->fix.line_length);
 //	printk("====minhyodebug:max=fb_wid x fb_height : %d x %d = %d\n", fb_width(info), fb_height(info), max);
 
-#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
+#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
 	p_line = bits;
 	sp = 0; // start pixel in Line
 	while (count > 3) {
@@ -125,7 +125,7 @@ int load_565rle_image_onfb( char *filename, int start_x, int start_y)
 		draw_pixel = n;
 		while(draw_pixel > 0)
 		{
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 		if(sp == 320) // 20100909 hongkuk.son for COOPER.rle ( booting logo )
 #elif defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
 			if(sp == 240)
@@ -136,7 +136,7 @@ int load_565rle_image_onfb( char *filename, int start_x, int start_y)
 				sp = 0;
 			}
 
-#if defined(CONFIG_MACH_COOPER)			
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)			
 			if( (sp + draw_pixel) >= 320) // 20100909 hongkuk.son for COOPER.rle ( booting logo )
 				c_pixel = 320 - sp; // 20100909 hongkuk.son for COOPER.rle ( booting logo )
 #elif defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)

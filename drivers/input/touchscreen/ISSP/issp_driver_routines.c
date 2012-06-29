@@ -52,7 +52,7 @@
 
 //#include <intrins.h>
 
-#if defined(CONFIG_MACH_BENI)||defined(CONFIG_MACH_TASS) ||defined(CONFIG_MACH_COOPER) 
+#if defined(CONFIG_MACH_BENI)||defined(CONFIG_MACH_TASS) ||defined(CONFIG_MACH_COOPER) ||defined(CONFIG_MACH_GIO) 
 #define SECURITY_DATA	0xAA
 #else
 #define SECURITY_DATA	0xFF
@@ -244,7 +244,7 @@ void SCLKHigh(void)
 //	gpio_tlmm_config(GPIO_CFG(TSP_SCL, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
 //				GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_direction_output(TSP_SCL, 1);
-#if !defined(CONFIG_MACH_BENI)||!defined(CONFIG_MACH_TASS) ||!defined(CONFIG_MACH_COOPER) 
+#if !defined(CONFIG_MACH_BENI)||!defined(CONFIG_MACH_TASS) ||!defined(CONFIG_MACH_COOPER) ||!defined(CONFIG_MACH_GIO) 
 	Delay(1);
 #endif
 }
@@ -268,7 +268,7 @@ void SCLKLow(void)
 
 //	gpio_set_value ( TSP_SCL, 0);
 	gpio_direction_output(TSP_SCL, 0);
-#if !defined(CONFIG_MACH_BENI)||!defined(CONFIG_MACH_TASS) ||!defined(CONFIG_MACH_COOPER) 
+#if !defined(CONFIG_MACH_BENI)||!defined(CONFIG_MACH_TASS) ||!defined(CONFIG_MACH_COOPER) ||!defined(CONFIG_MACH_GIO) 
 	Delay(1);
 #endif
 }

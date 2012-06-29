@@ -86,6 +86,70 @@ struct brt_value brt_table_ktd[] = {
  { 245,  31  },
  { MAX_BRIGHTNESS_VALUE,  32 }, // Max pulse 1(33-32) by HW
 };
+#elif defined(CONFIG_MACH_GIO)
+struct brt_value brt_table_ktd[] = {
+	  { 0,  5 }, // Off
+	  { 20, 1 }, // Dimming pulse 
+	  { MIN_BRIGHTNESS_VALUE,  1 }, // Min pulse 1(33-32) by HW
+	  { 44,  2 }, 
+	  { 52,  3 },  
+	  { 60,  4 }, 
+	  { 69,  5 }, 
+	  { 77,  6 }, 
+	  { 85,  7 }, 
+	  { 93,  8 },
+	  { 102,  9 },
+	  { 110,  10 }, 
+	  { 118,  11 },
+	  { 126,  12 },
+	  { 134,  13 },
+	  { 145,  14 }, // default pulse 19(33-14) by HW
+	  { 153,  15 }, 
+	  { 161,  16 }, 
+	  { 169,  17 }, 
+	  { 177,  18 }, 
+	  { 185,  19 }, 
+	  { 193,  20  },
+	  { 201,  21  },
+	  { 209,  22  },
+	  { 217,  23  },
+	  { 225,  24  },
+	  { 233,  25  },
+	  { 241,  26  },
+	  { MAX_BRIGHTNESS_VALUE,  27 }, // Max pulse 6(33-27) by HW
+};
+struct brt_value brt_table_shp[] = {
+	  { 0,  5 }, // Off
+	  { 20, 1 }, // Dimming pulse 
+	  { MIN_BRIGHTNESS_VALUE,  1 }, // Min pulse 1(33-32) by HW
+	  { 44,  2 }, 
+	  { 52,  3 },  
+	  { 60,  4 }, 
+	  { 69,  5 }, 
+	  { 77,  6 }, 
+	  { 85,  7 }, 
+	  { 93,  8 },
+	  { 102,  9 },
+	  { 110,  10 }, 
+	  { 118,  11 },
+	  { 126,  12 },
+	  { 134,  13 },
+	  { 145,  15 }, // default pulse 18(33-15) by HW
+	  { 153,  15 }, 
+	  { 161,  16 }, 
+	  { 169,  17 }, 
+	  { 177,  18 }, 
+	  { 185,  19 }, 
+	  { 193,  20  },
+	  { 201,  21  },
+	  { 209,  22  },
+	  { 217,  23  },
+	  { 225,  24  },
+	  { 233,  25  },
+	  { 241,  26  },
+	  //{ MAX_BRIGHTNESS_VALUE,  27 }, // Max pulse 6(33-27) by HW
+	  { MAX_BRIGHTNESS_VALUE,  31 }, // Max pulse 2(33-31) by HW
+};
 #elif defined(CONFIG_MACH_BENI)
 struct brt_value brt_table_ktd[] = {
 		{ 0, 	1	}, // Off
@@ -348,6 +412,58 @@ void lcdc_s6d_set_brightness_by_ktd259(int level)
 			selected_value = 1;
 		}
 #endif
+#if defined CONFIG_MACH_GIO
+		if(level > 0)
+		{
+			if(level < MIN_BRIGHTNESS_VALUE)
+			{
+				if(lcd_type == 1)  // SMD
+				{
+					tune_level = brt_table_ktd[1].tune_level;			
+				}
+				else   // lcd_type = 2, Sharp
+				{
+					tune_level = brt_table_shp[1].tune_level;
+				}
+			} 
+			else if (level == MAX_BRIGHTNESS_VALUE)
+			{
+				if(lcd_type == 1)  // SMD
+				{
+					tune_level = brt_table_ktd[MAX_BRT_STAGE_KTD-1].tune_level;			
+				}
+				else   // lcd_type = 2, Sharp
+				{
+					tune_level = brt_table_shp[MAX_BRT_STAGE_SHP-1].tune_level;
+				}
+			}
+			else
+			{
+				if(lcd_type == 1)
+				{
+					for(i = 0; i < MAX_BRT_STAGE_KTD; i++)
+					{
+						if(level <= brt_table_ktd[i].level )
+						{
+							tune_level = brt_table_ktd[i].tune_level;
+							break;
+						}
+					}
+				}
+				else
+				{
+					for(i = 0; i < MAX_BRT_STAGE_SHP; i++)
+					{
+						if(level <= brt_table_shp[i].level )
+						{
+							tune_level = brt_table_shp[i].tune_level;
+							break;
+						}
+					}
+				}
+			}
+		}
+#else
 		if(level > 0) {
 			if(level < MIN_BRIGHTNESS_VALUE) {
 				tune_level = KTD_DIMMING_VALUE; //DIMMING
@@ -362,6 +478,7 @@ void lcdc_s6d_set_brightness_by_ktd259(int level)
 				}
 			}
 		}
+#endif
 		printk("Platform V:%d, Find V:%d\n",level, tune_level);
 
 		if(tune_level <= 0) {

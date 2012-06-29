@@ -27,13 +27,13 @@
 
 //#define AUTO_POWER_ON_OFF_FLAG 1
 
-#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 unsigned int Volume_Up_irq = 0;
 unsigned int Volume_Down_irq = 0;
 #endif
 
 extern int board_hw_revision;
-#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
 extern void TSP_forced_release_forkey(void);
 #endif
 
@@ -65,7 +65,7 @@ int wlan_debug_step;
 EXPORT_SYMBOL(wlan_debug_step);
 #endif
 
-#if defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 int key_pressed;
 extern int power_off_done;
 extern int lcd_on_state_for_debug;
@@ -78,7 +78,7 @@ extern void ath_debug_sdio_claimer(void);
 int alt_key_pressed = 0;
 #endif
 
-#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 #if defined(CONFIG_KERNEL_SEC_MMICHECK)
 int mmi_keycode[] = {
 			KEY_BACK, KEY_HOME, KEY_MENU, KEY_POWER, KEY_VOLUMEUP, KEY_VOLUMEDOWN,
@@ -225,7 +225,7 @@ static void report_key(struct gpio_kp *kp, int key_index, int out, int in)
 					mi->input_gpios[in], pressed);
 #endif			
 
-#if defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO)  || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO)  || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 			if(!power_off_done) {
 
 #if defined(CONFIG_MACH_CALLISTO)
@@ -242,11 +242,11 @@ static void report_key(struct gpio_kp *kp, int key_index, int out, int in)
 				{	
 #endif
 			input_report_key(kp->input_devs->dev[dev], keycode, pressed);
-#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_TASS)
 				if(keycode == KEY_HOME && pressed == 1)
 					TSP_forced_release_forkey();
 #endif
-#if defined(CONFIG_MACH_CALLISTO)  || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_CALLISTO)  || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 //#ifdef CONFIG_KERNEL_DEBUG_SEC
 //				printk("key event (keycode:%d, pressed:%d), w=%d\n", 
 //						keycode, pressed, lcd_on_state_for_debug);	// sec: sm.kim
@@ -397,7 +397,7 @@ static irqreturn_t gpiokey_irq_handler(int irq_in, void *dev_id)
 			input_report_key(kp->input_devs->dev[dev], KEY_END, 0);
 //			printk("key event (keycode:%d, pressed:%d)\n", KEY_END, 0); //sec: sm.kim
 			key_pressed = 0;
-#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_TASS)
 			TSP_forced_release_forkey();
 #endif
 		}
@@ -485,7 +485,7 @@ static int gpio_keypad_request_irqs(struct gpio_kp *kp)
 		if (err < 0)
 			goto err_gpio_get_irq_num_failed;
 
-#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_TASS)
 		switch(mi->input_gpios[i])
 		{
 			case 41:
@@ -669,7 +669,7 @@ int gpio_event_matrix_func(struct gpio_event_input_devs *input_devs,
 		}
 		input_set_capability(input_devs->dev[0],EV_KEY, KEY_END); // for COOPER
 
-#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 #if defined(CONFIG_KERNEL_SEC_MMICHECK)
 		for(i = 0 ; i < ARRAY_SIZE(mmi_keycode) ; i++)
 			input_set_capability(input_devs->dev[0],EV_KEY, mmi_keycode[i]); // for COOPER			

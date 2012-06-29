@@ -17,7 +17,7 @@
 
 extern struct platform_device keypad_device_7k_ffa;
 extern struct platform_device keypad_device_8k_ffa;
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
 extern struct platform_device keypad_device_surf_00;
 extern struct platform_device keypad_device_surf_03;
 #elif defined(CONFIG_MACH_LUCAS)

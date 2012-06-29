@@ -64,6 +64,8 @@ unsigned char Firmware_Data_HW1[]=
 #include "Firmware_TASS0C_HW01.h"
 #elif defined(CONFIG_MACH_CALLISTO)
 #include "Firmware_ver04.h"
+#elif defined(CONFIG_MACH_GIO)
+#include "Firmware_GIO03_HW01.h"
 #endif
 };
 unsigned char Firmware_Data_HW2[]= 
@@ -74,17 +76,54 @@ unsigned char Firmware_Data_HW2[]=
 #include "Firmware_TASS07_HW11.h"
 #elif defined(CONFIG_MACH_CALLISTO)
 #include "Firmware_ver04_HW02.h"
+#elif defined(CONFIG_MACH_GIO)
+#include "Firmware_GIO01_HW02.h"
 #endif
 };
 unsigned char Firmware_Data_HW3[]= 
 {
 #if defined(CONFIG_MACH_BENI)
 #include "Firmware_BENI03_HW03.h"
+#elif defined(CONFIG_MACH_GIO)
+#include "Firmware_GIO09_HW03.h"
 #else
 #include "Firmware_cooper06_HW04.h"
 #endif
 };
+unsigned char Firmware_Data_HW11[]= 
+{
+#if defined(CONFIG_MACH_GIO)
+#include "Firmware_GIO01_HW11.h"
+#else
+#include "Firmware_GIO03_HW01.h"
+#endif
+};
+unsigned char Firmware_Data_HW21[]= 
+{
+#if defined(CONFIG_MACH_GIO)
+#include "Firmware_GIO01_HW21.h"
+#else
+#include "Firmware_GIO03_HW01.h"
+#endif
+};
 
+unsigned char Firmware_Data_HW22[]= 
+{
+#if defined(CONFIG_MACH_GIO)
+#include "Firmware_GIO01_HW22.h"
+#else
+#include "Firmware_GIO03_HW01.h"
+#endif
+};
+
+unsigned char Firmware_Data_HW23[]= 
+{
+#if defined(CONFIG_MACH_GIO)
+#include "Firmware_GIO09_HW23.h"
+#else
+#include "Firmware_GIO03_HW01.h"
+#endif
+};
 extern void SetSCLKHiZ(void);
 /* ========================================================================= */
 // ErrorTrap()
@@ -141,8 +180,22 @@ int cypress_update( int HW_ver )
 	//    ioctl(touch_fd, DEV_CTRL_TOUCH_INT_DISABLE,NULL);
 	//    ioctl(touch_fd, DEV_CTRL_TOUCH_SET_FLAG,NULL);
 	printk(KERN_INFO "[TSP] %s, %d, HW ver=%d\n", __func__, __LINE__,HW_ver);
-
-#if defined(CONFIG_MACH_COOPER)
+#if defined(CONFIG_MACH_GIO)
+	if( HW_ver == 1)
+		pSocData = Firmware_Data_HW1;
+	else if ( HW_ver == 2 )
+		pSocData = Firmware_Data_HW2;
+	else if ( HW_ver == 3 || HW_ver == 0 )
+		pSocData = Firmware_Data_HW3;
+	else if ( HW_ver == 17 )
+		pSocData = Firmware_Data_HW11;
+	else if ( HW_ver == 33 )
+		pSocData = Firmware_Data_HW21;
+	else if ( HW_ver == 34)
+		pSocData = Firmware_Data_HW22;
+	else if ( HW_ver == 35)
+		pSocData = Firmware_Data_HW23;
+#elif defined(CONFIG_MACH_COOPER)
 	if( HW_ver == 4 || HW_ver == 3 || HW_ver == 0 )
 		pSocData = Firmware_Data_HW3;
 #else
@@ -189,7 +242,7 @@ int cypress_update( int HW_ver )
 //	printk(KERN_INFO "[TSP] %s, %d\n", __func__, __LINE__);
 
 	// Run the SiliconID Verification, and proceed according to result.
-#if !defined(CONFIG_MACH_TASS)
+#if !defined(CONFIG_MACH_TASS) && !defined(CONFIG_MACH_GIO)
 	fIsError = fVerifySiliconID();
 #endif
 	if (fIsError )
