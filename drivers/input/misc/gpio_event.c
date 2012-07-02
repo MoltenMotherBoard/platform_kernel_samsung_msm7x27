@@ -120,7 +120,7 @@ void gpio_event_resume(struct early_suspend *h)
 #endif
 
 
-#if (defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER)) || defined(CONFIG_MACH_GIO)) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if (defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS))
 extern int key_pressed;
 /* sys fs */
 struct class *key_class;
@@ -212,7 +212,7 @@ static int gpio_event_probe(struct platform_device *pdev)
 		registered++;
 	}
 
-#if (defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO)|| defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS))
+#if (defined(CONFIG_MACH_EUROPA) || defined(CONFIG_MACH_CALLISTO)|| defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS))
 	/* sys fs */
 	key_class = class_create(THIS_MODULE, "key");
 	if (IS_ERR(key_class))

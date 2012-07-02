@@ -53,6 +53,7 @@
 #define PANEL_GP_TN			0x61ad10
 
 extern unsigned int lcd_panel_type;
+extern int lcd_type;
 static int lcd_brightness = -1;
 #if defined(CONFIG_MACH_COOPER)
 struct brt_value brt_table_ktd[] = {
@@ -353,6 +354,7 @@ struct brt_value brt_table_aat[] = {
 #endif
 
 #define MAX_BRT_STAGE_KTD (int)(sizeof(brt_table_ktd)/sizeof(struct brt_value))
+#define MAX_BRT_STAGE_SHP (int)(sizeof(brt_table_shp)/sizeof(struct brt_value))
 #define MAX_BRT_STAGE_AAT (int)(sizeof(brt_table_aat)/sizeof(struct brt_value))
 
 static DEFINE_SPINLOCK(bl_ctrl_lock);

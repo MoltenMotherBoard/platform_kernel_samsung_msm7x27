@@ -68,7 +68,7 @@ int load_565rle_image_onfb( char *filename, int start_x, int start_y)
 	unsigned count, max;
 	unsigned short *data, *bits, *ptr;
 	struct fb_info *info;
-#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
+#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_LUCAS)
 	unsigned short *p_line; // minhyo0512
 	unsigned short sp, c_pixel; // minhyo0512
 	unsigned draw_pixel;

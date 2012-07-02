@@ -192,7 +192,7 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 #CROSS_COMPILE	?=
 
 ARCH		=arm
-CROSS_COMPILE	=arm-eabi-
+CROSS_COMPILE	=arm-none-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)

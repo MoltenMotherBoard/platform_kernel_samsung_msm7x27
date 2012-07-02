@@ -364,6 +364,7 @@ static int s5k5ca_sensor_burst_write_list(struct samsung_short_t *list,int size,
 	
 
 
+
 	for (i = 0; i < size; i++)
 	{
 
@@ -2187,7 +2188,7 @@ static int s5k5ca_sensor_probe(const struct msm_camera_sensor_info *info,
 	s->s_release = s5k5ca_sensor_release;
 	s->s_config  = s5k5ca_sensor_config;	
 	s->s_camera_type = BACK_CAMERA_2D;
-	s->s_mount_angle = 0;
+	s->s_mount_angle = 90;
 
 probe_done:
 	CDBG("%s %s:%d\n", __FILE__, __func__, __LINE__);

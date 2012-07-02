@@ -393,6 +393,9 @@ extern struct cpufreq_governor cpufreq_gov_minmax;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_LAGFREE)
 extern struct cpufreq_governor cpufreq_gov_lagfree;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_lagfree)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_SMOOTHASS)
+extern struct cpufreq_governor cpufreq_gov_smoothass;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_smoothass)
 #endif
 
 
