@@ -192,7 +192,7 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 #CROSS_COMPILE	?=
 
 ARCH		=arm
-CROSS_COMPILE	=arm-none-eabi-
+CROSS_COMPILE	= /home/cas/git/cm9-gio/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)

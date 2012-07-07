@@ -1058,15 +1058,23 @@ static void composite_disconnect(struct usb_gadget *gadget)
 
 /* mute switch bug fix  */	
 #ifdef CONFIG_USB_SAMSUNG_VBUS_CHECK
-	cdev->connected = 0;
-		schedule_work(&cdev->switch_work);
+        b_session= gadget->ops->get_vbus_state(gadget);
+
+        if (b_session && cdev->mute_switch)
+                cdev->mute_switch = 0;
+        else
+        {
+                if ( cdev->mute_switch )
+                        cdev->mute_switch=0;
+                schedule_work(&cdev->switch_work);
+        }
 #else
-	if (cdev->mute_switch)
-		cdev->mute_switch = 0;
-	else
-		schedule_work(&cdev->switch_work);
+        if (cdev->mute_switch)
+                cdev->mute_switch = 0;
+        else
+                schedule_work(&cdev->switch_work);
 #endif
-	spin_unlock_irqrestore(&cdev->lock, flags);
+        spin_unlock_irqrestore(&cdev->lock, flags);
 }
 
 /*-------------------------------------------------------------------------*/
