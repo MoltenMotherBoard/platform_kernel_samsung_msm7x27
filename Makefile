@@ -191,7 +191,7 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 #ARCH		?= $(SUBARCH)
 #CROSS_COMPILE	?=
 
-ARCH		=arm
+ARCH		= arm
 CROSS_COMPILE	= arm-eabi-
 
 # Architecture as present in compile.h

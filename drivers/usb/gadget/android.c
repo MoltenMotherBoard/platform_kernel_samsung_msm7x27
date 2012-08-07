@@ -663,16 +663,24 @@ void get_usb_serial(char *usb_serial_number)
 	sprintf(temp_serial_number,"I5510%08x",unique_serial_number);
 #elif defined(CONFIG_MACH_EUROPA)
 	sprintf(temp_serial_number,"I5500%08x",unique_serial_number);
-#elif defined(CONFIG_MACH_COOPER)
+#elif defined(CONFIG_MACH_COOPER) && defined(CONFIG_TARGET_LOCALE_EUR_OPEN)
+	sprintf(temp_serial_number,"S5830%08x",unique_serial_number);
+#elif defined(CONFIG_MACH_COOPER) && defined(CONFIG_TARGET_LOCALE_AUS_TEL)
 	sprintf(temp_serial_number,"S5830%08x",unique_serial_number);
 #elif defined(CONFIG_MACH_BENI)
 	sprintf(temp_serial_number,"S5670%08x",unique_serial_number);
 #elif defined(CONFIG_MACH_TASS)
 	sprintf(temp_serial_number,"S5570%08x",unique_serial_number);
+#elif defined(CONFIG_MACH_TASSDT)
+	sprintf(temp_serial_number,"S5571%08x",unique_serial_number);
 #elif defined(CONFIG_MACH_LUCAS)
 	sprintf(temp_serial_number,"B7510%08x",unique_serial_number);
 #elif defined(CONFIG_MACH_GIO)
-	sprintf(temp_serial_number,"S5660%08x",unique_serial_number);
+#if defined(CONFIG_MACH_GIO_TELSTRA)
+	sprintf(temp_serial_number,"S5660T%08x",unique_serial_number);
+#else
+	sprintf(temp_serial_number,"S5660V%08x",unique_serial_number);
+#endif
 #endif
 	strcpy(usb_serial_number,temp_serial_number);
 }
