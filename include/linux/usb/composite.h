@@ -364,6 +364,8 @@ struct usb_composite_dev {
         /* used by usb_composite_force_reset to avoid signalling switch changes */
         bool                            mute_switch;
         struct work_struct switch_work;
+
+	struct switch_dev		sdev;
 };
 
 extern int usb_string_id(struct usb_composite_dev *c);
