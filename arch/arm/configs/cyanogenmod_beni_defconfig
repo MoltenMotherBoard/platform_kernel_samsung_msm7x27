@@ -1519,7 +1519,6 @@ CONFIG_S5K4ECGX=y
 # CONFIG_S5K5CAGX_GIO is not set
 # CONFIG_S5K5CCFF is not set
 # CONFIG_ISX006 is not set
-# CONFIG_S5K4ECGX is not set
 # CONFIG_S5K4ECGX_COOPER is not set
 # CONFIG_S5K4ECGX_GIO is not set
 # CONFIG_MT9P012 is not set
