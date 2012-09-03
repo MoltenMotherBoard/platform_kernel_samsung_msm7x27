@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010, 2012 Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -42,14 +42,18 @@ static struct mdp4_overlay_pipe *atv_pipe;
 int mdp4_atv_on(struct platform_device *pdev)
 {
 	uint8 *buf;
+	unsigned int buf_offset;
 	int bpp, ptype;
+	int yres, remainder;
 	struct fb_info *fbi;
 	struct fb_var_screeninfo *var;
 	struct msm_fb_data_type *mfd;
 	struct mdp4_overlay_pipe *pipe;
+	struct msm_panel_info *panel_info;
 	int ret;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
+	panel_info = &mfd->panel_info;
 
 	if (!mfd)
 		return -ENODEV;
@@ -60,13 +64,32 @@ int mdp4_atv_on(struct platform_device *pdev)
 	fbi = mfd->fbi;
 	var = &fbi->var;
 
+	if (panel_info->mode2_yres != 0) {
+		yres = panel_info->mode2_yres;
+		remainder = (fbi->fix.line_length*yres)%PAGE_SIZE;
+	} else {
+		yres = panel_info->yres;
+		remainder = (fbi->fix.line_length*yres)%PAGE_SIZE;
+	}
+
+	if (!remainder)
+		remainder = PAGE_SIZE;
+
 	bpp = fbi->var.bits_per_pixel / 8;
 	buf = (uint8 *) fbi->fix.smem_start;
-	buf += calc_fb_offset(mfd, fbi, bpp);
+	if (fbi->var.yoffset < yres) {
+		buf += fbi->var.xoffset * bpp;
+	} else if (fbi->var.yoffset >= yres && fbi->var.yoffset < 2 * yres) {
+		buf += fbi->var.xoffset * bpp + yres *
+		fbi->fix.line_length + PAGE_SIZE - remainder;
+	} else {
+		buf += fbi->var.xoffset * bpp + 2 * yres *
+		fbi->fix.line_length + 2 * (PAGE_SIZE - remainder);
+	}
 
 	if (atv_pipe == NULL) {
 		ptype = mdp4_overlay_format2type(mfd->fb_imgType);
-		pipe = mdp4_overlay_pipe_alloc(ptype, MDP4_MIXER1, 0);
+		pipe = mdp4_overlay_pipe_alloc(ptype, MDP4_MIXER1);
 		if (pipe == NULL)
 			return -EBUSY;
 		pipe->pipe_used++;
@@ -101,7 +124,15 @@ int mdp4_atv_on(struct platform_device *pdev)
 	pipe->src_w = fbi->var.xres;
 	pipe->src_y = 0;
 	pipe->src_x = 0;
-	pipe->srcp0_addr = (uint32) buf;
+	if (mfd->map_buffer) {
+		pipe->srcp0_addr = (unsigned int)mfd->map_buffer->iova[0] + \
+			buf_offset;
+		pr_debug("start 0x%lx srcp0_addr 0x%x\n", mfd->
+			map_buffer->iova[0], pipe->srcp0_addr);
+	} else {
+		pipe->srcp0_addr = (uint32)(buf + buf_offset);
+	}
+
 	pipe->srcp0_ystride = fbi->fix.line_length;
 
 	mdp4_overlay_dmae_xy(pipe);	/* dma_e */
@@ -112,6 +143,8 @@ int mdp4_atv_on(struct platform_device *pdev)
 	mdp4_mixer_stage_up(pipe);
 
 	mdp4_overlayproc_cfg(pipe);
+
+	mdp4_overlay_reg_flush(pipe, 1);
 
 	if (ret == 0)
 		mdp_pipe_ctrl(MDP_OVERLAY1_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
@@ -134,8 +167,10 @@ int mdp4_atv_off(struct platform_device *pdev)
 	msleep(100);
 
 	/* dis-engage rgb2 from mixer1 */
-	if (atv_pipe)
+	if (atv_pipe) {
 		mdp4_mixer_stage_down(atv_pipe);
+		mdp4_iommu_unmap(atv_pipe);
+	}
 
 	return ret;
 }
@@ -152,29 +187,54 @@ void mdp4_atv_overlay(struct msm_fb_data_type *mfd)
 {
 	struct fb_info *fbi = mfd->fbi;
 	uint8 *buf;
+	unsigned int buf_offset;
 	int bpp;
 	unsigned long flag;
+	int yres, remainder;
 	struct mdp4_overlay_pipe *pipe;
+	struct msm_panel_info *panel_info = &mfd->panel_info;
 
 	if (!mfd->panel_power_on)
 		return;
 
+	if (panel_info->mode2_yres != 0) {
+		yres = panel_info->mode2_yres;
+		remainder = (fbi->fix.line_length*yres)%PAGE_SIZE;
+	} else {
+		yres = panel_info->yres;
+		remainder = (fbi->fix.line_length*yres)%PAGE_SIZE;
+	}
+
+	if (!remainder)
+		remainder = PAGE_SIZE;
+
 	/* no need to power on cmd block since it's lcdc mode */
 	bpp = fbi->var.bits_per_pixel / 8;
 	buf = (uint8 *) fbi->fix.smem_start;
-<<<<<<< HEAD
-	buf += fbi->var.xoffset * bpp +
-		fbi->var.yoffset * fbi->fix.line_length;
-=======
-	buf += calc_fb_offset(mfd, fbi, bpp);
->>>>>>> c9b0b0d... msm_fb: Clean up of frame buffer 4KB alignment changes
+	if (fbi->var.yoffset < yres) {
+		buf += fbi->var.xoffset * bpp;
+	} else if (fbi->var.yoffset >= yres && fbi->var.yoffset < 2 * yres) {
+		buf += fbi->var.xoffset * bpp + yres *
+		fbi->fix.line_length + PAGE_SIZE - remainder;
+	} else {
+		buf += fbi->var.xoffset * bpp + 2 * yres *
+		fbi->fix.line_length + 2 * (PAGE_SIZE - remainder);
+	}
 
 	mutex_lock(&mfd->dma->ov_mutex);
 
 	pipe = atv_pipe;
-	pipe->srcp0_addr = (uint32) buf;
+	if (mfd->map_buffer) {
+		pipe->srcp0_addr = (unsigned int)mfd->map_buffer->iova[0] + \
+			buf_offset;
+		pr_debug("start 0x%lx srcp0_addr 0x%x\n", mfd->
+			map_buffer->iova[0], pipe->srcp0_addr);
+	} else {
+		pipe->srcp0_addr = (uint32)(buf + buf_offset);
+	}
 	mdp4_overlay_rgb_setup(pipe);
-	mdp4_overlay_reg_flush(pipe, 1); /* rgb2 and mixer1 */
+	mdp4_mixer_stage_up(pipe);
+	mdp4_overlay_reg_flush(pipe, 0);
 
 	printk(KERN_INFO "mdp4_atv_overlay: pipe=%x ndx=%d\n",
 					(int)pipe, pipe->pipe_ndx);
@@ -191,7 +251,9 @@ void mdp4_atv_overlay(struct msm_fb_data_type *mfd)
 	wait_for_completion_killable(&atv_pipe->comp);
 	mdp_disable_irq(MDP_OVERLAY1_TERM);
 
+	/* change mdp clk while mdp is idle` */
+	mdp4_set_perf_level();
+
 	mdp4_stat.kickoff_atv++;
-	mdp4_overlay_resource_release();
 	mutex_unlock(&mfd->dma->ov_mutex);
 }
