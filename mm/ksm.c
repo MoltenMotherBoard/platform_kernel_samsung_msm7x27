@@ -180,15 +180,15 @@ static unsigned long ksm_pages_unshared;
 static unsigned long ksm_rmap_items;
 
 /* Number of pages ksmd should scan in one batch */
-static unsigned int ksm_thread_pages_to_scan = 100;
+static unsigned int ksm_thread_pages_to_scan = 128;
 
 /* Milliseconds ksmd should sleep between batches */
-static unsigned int ksm_thread_sleep_millisecs = 20;
+static unsigned int ksm_thread_sleep_millisecs = 4000;
 
 #define KSM_RUN_STOP	0
 #define KSM_RUN_MERGE	1
 #define KSM_RUN_UNMERGE	2
-static unsigned int ksm_run = KSM_RUN_STOP;
+static unsigned int ksm_run = KSM_RUN_MERGE;
 
 static DECLARE_WAIT_QUEUE_HEAD(ksm_thread_wait);
 static DEFINE_MUTEX(ksm_thread_mutex);
@@ -731,7 +731,7 @@ static int write_protect_page(struct vm_area_struct *vma, struct page *page,
 	if (!ptep)
 		goto out;
 
-	if (pte_write(*ptep) || pte_dirty(*ptep)) {
+	if (pte_write(*ptep)) {
 		pte_t entry;
 
 		swapped = PageSwapCache(page);
@@ -754,9 +754,7 @@ static int write_protect_page(struct vm_area_struct *vma, struct page *page,
 			set_pte_at(mm, addr, ptep, entry);
 			goto out_unlock;
 		}
-		if (pte_dirty(entry))
-                    set_page_dirty(page);
-                    entry = pte_mkclean(pte_wrprotect(entry));
+		entry = pte_wrprotect(entry);
 		set_pte_at_notify(mm, addr, ptep, entry);
 	}
 	*orig_pte = *ptep;
@@ -819,8 +817,6 @@ static int replace_page(struct vm_area_struct *vma, struct page *page,
 	set_pte_at_notify(mm, addr, ptep, mk_pte(kpage, vma->vm_page_prot));
 
 	page_remove_rmap(page);
-        if (!page_mapped(page))
-            try_to_free_swap(page);
 	put_page(page);
 
 	pte_unmap_unlock(ptep, ptl);
@@ -1268,18 +1264,6 @@ static struct rmap_item *scan_get_next_rmap_item(struct page **page)
 
 	slot = ksm_scan.mm_slot;
 	if (slot == &ksm_mm_head) {
-                /*
-                 * A number of pages can hang around indefinitely on per-cpu
-                 * pagevecs, raised page count preventing write_protect_page
-                 * from merging them.  Though it doesn't really matter much,
-                 * it is puzzling to see some stuck in pages_volatile until
-                 * other activity jostles them out, and they also prevented
-                 * LTP's KSM test from succeeding deterministically; so drain
-                 * them here (here rather than on entry to ksm_do_scan(),
-                 * so we don't IPI too often when pages_to_scan is set low).
-                 */
-                 lru_add_drain_all();
-
 		root_unstable_tree = RB_ROOT;
 
 		spin_lock(&ksm_mmlist_lock);
@@ -1757,13 +1741,8 @@ static int ksm_memory_callback(struct notifier_block *self,
 		/*
 		 * Keep it very simple for now: just lock out ksmd and
 		 * MADV_UNMERGEABLE while any memory is going offline.
-                 * mutex_lock_nested() is necessary because lockdep was alarmed
-                 * that here we take ksm_thread_mutex inside notifier chain
-                 * mutex, and later take notifier chain mutex inside
-                 * ksm_thread_mutex to unlock it.   But that's safe because both
-                 * are inside mem_hotplug_mutex.
 		 */
-		mutex_lock_nested(&ksm_thread_mutex, SINGLE_DEPTH_NESTING);
+		mutex_lock(&ksm_thread_mutex);
 		break;
 
 	case MEM_OFFLINE:
