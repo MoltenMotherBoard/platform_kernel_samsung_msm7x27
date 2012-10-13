@@ -318,4 +318,3 @@ do {							\
 
 #endif /* __KERNEL__ */
 #endif /* _NF_CONNTRACK_H */
-
