@@ -2750,15 +2750,34 @@ static int msmfb_overlay_unset(struct fb_info *info, unsigned long *argp)
 
 static int msmfb_overlay_commit(struct fb_info *info, unsigned long *argp)
 {
-  int ret, ndx;
-  ret = copy_from_user(&ndx, argp, sizeof(ndx));
-  if (ret) {
-    pr_err("%s: ioctl failed\n", __func__);
-    return ret;
-  }
-  return mdp4_overlay_commit(info, ndx);
+    int ret, ndx;
+    ret = copy_from_user(&ndx, argp, sizeof(ndx));
+    if (ret) {
+        pr_err("%s: ioctl failed\n", __func__);
+        return ret;
+    }
+    return mdp4_overlay_commit(info, ndx);
 }
 
+static int msmfb_overlay_play_wait(struct fb_info *info, unsigned long *argp)
+{
+	int ret;
+	struct msmfb_overlay_data req;
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
+	if (mfd->overlay_play_enable == 0)      /* nothing to do */
+		return 0;
+
+	ret = copy_from_user(&req, argp, sizeof(req));
+	if (ret) {
+		pr_err("%s:msmfb_overlay_wait ioctl failed", __func__);
+		return ret;
+	}
+
+	ret = mdp4_overlay_play_wait(info, &req);
+
+	return ret;
+}
 
 static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 {
@@ -2985,11 +3004,11 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = msmfb_overlay_unset(info, argp);
 		up(&msm_fb_ioctl_ppp_sem);
 		break;
-	case MSMFB_OVERLAY_COMMIT:
-    		down(&msm_fb_ioctl_ppp_sem);
-     		ret = msmfb_overlay_commit(info, argp);
-    		up(&msm_fb_ioctl_ppp_sem);
-   		break;
+        case MSMFB_OVERLAY_COMMIT:
+      		down(&msm_fb_ioctl_ppp_sem);
+      		ret = msmfb_overlay_commit(info, argp);
+       		up(&msm_fb_ioctl_ppp_sem);
+        break;
 	case MSMFB_OVERLAY_PLAY:
 		down(&msm_fb_ioctl_ppp_sem);
 		ret = msmfb_overlay_play(info, argp);
