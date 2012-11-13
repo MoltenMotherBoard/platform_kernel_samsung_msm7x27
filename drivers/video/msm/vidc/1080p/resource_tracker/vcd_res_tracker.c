@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,18 +23,36 @@
 #include <linux/pm_runtime.h>
 #include <mach/internal_power_rail.h>
 #include <mach/clk.h>
-#include <mach/msm_reqs.h>
+#include <mach/msm_memtypes.h>
 #include <linux/interrupt.h>
+#include <linux/memory_alloc.h>
+#include <asm/sizes.h>
+#include <media/msm/vidc_init.h>
 #include "vidc.h"
 #include "vcd_res_tracker.h"
-#include "vidc_init.h"
+
+#define PIL_FW_BASE_ADDR 0xafe00000
+#define PIL_FW_SIZE 0x200000
 
 static unsigned int vidc_clk_table[3] = {
 	48000000, 133330000, 200000000
 };
+static unsigned int restrk_mmu_subsystem[] =	{
+		MSM_SUBSYSTEM_VIDEO, MSM_SUBSYSTEM_VIDEO_FWARE};
 static struct res_trk_context resource_context;
 
 #define VIDC_FW	"vidc_1080p.fw"
+
+struct res_trk_vidc_mmu_clk {
+	char *mmu_clk_name;
+	struct clk *mmu_clk;
+};
+
+static struct res_trk_vidc_mmu_clk vidc_mmu_clks[] = {
+	{"mdp_iommu_clk"}, {"rot_iommu_clk"},
+	{"vcodec_iommu0_clk"}, {"vcodec_iommu1_clk"},
+	{"smmu_iface_clk"}
+};
 
 unsigned char *vidc_video_codec_fw;
 u32 vidc_video_codec_fw_size;
@@ -245,16 +263,16 @@ static u32 res_trk_get_clk()
 		goto bail_out;
 	}
 	resource_context.vcodec_clk = clk_get(resource_context.device,
-		"vcodec_clk");
+		"core_clk");
 	if (IS_ERR(resource_context.vcodec_clk)) {
-		VCDRES_MSG_ERROR("%s(): vcodec_clk get failed\n",
+		VCDRES_MSG_ERROR("%s(): core_clk get failed\n",
 						__func__);
 		goto bail_out;
 	}
 	 resource_context.vcodec_pclk = clk_get(resource_context.device,
-			"vcodec_pclk");
+		"iface_clk");
 	if (IS_ERR(resource_context.vcodec_pclk)) {
-		VCDRES_MSG_ERROR("%s(): vcodec_pclk get failed\n",
+		VCDRES_MSG_ERROR("%s(): iface_clk get failed\n",
 						__func__);
 		goto release_vcodec_clk;
 	}
@@ -325,6 +343,7 @@ u32 res_trk_enable_clocks(void)
 				VCDRES_MSG_ERROR("vidc core clk Enable fail\n");
 				goto vidc_disable_pclk;
 			}
+
 			VCDRES_MSG_LOW("%s(): Clocks enabled!\n", __func__);
 		} else {
 		   VCDRES_MSG_ERROR("%s(): Clocks enable failed!\n",
@@ -420,6 +439,40 @@ bail_out:
 	return false;
 }
 
+static struct ion_client *res_trk_create_ion_client(void){
+	struct ion_client *video_client;
+	video_client = msm_ion_client_create(-1, "video_client");
+	return video_client;
+}
+
+int res_trk_enable_footswitch(void)
+{
+	int rc = 0;
+	mutex_lock(&resource_context.lock);
+	resource_context.footswitch = regulator_get(NULL, "fs_ved");
+	if (IS_ERR(resource_context.footswitch)) {
+		VCDRES_MSG_ERROR("foot switch get failed\n");
+		resource_context.footswitch = NULL;
+		rc = -EINVAL;
+	} else
+		rc = regulator_enable(resource_context.footswitch);
+	mutex_unlock(&resource_context.lock);
+	return rc;
+}
+
+int res_trk_disable_footswitch(void)
+{
+	mutex_lock(&resource_context.lock);
+	if (resource_context.footswitch) {
+		if (regulator_disable(resource_context.footswitch))
+			VCDRES_MSG_ERROR("Regulator disable failed\n");
+		regulator_put(resource_context.footswitch);
+		resource_context.footswitch = NULL;
+	}
+	mutex_unlock(&resource_context.lock);
+	return 0;
+}
+
 u32 res_trk_power_up(void)
 {
 	VCDRES_MSG_LOW("clk_regime_rail_enable");
@@ -441,6 +494,8 @@ u32 res_trk_power_up(void)
 u32 res_trk_power_down(void)
 {
 	VCDRES_MSG_LOW("clk_regime_rail_disable");
+	res_trk_pmem_unmap(&resource_context.firmware_addr);
+	res_trk_pmem_free(&resource_context.firmware_addr);
 #ifdef CONFIG_MSM_BUS_SCALING
 	msm_bus_scale_client_update_request(resource_context.pcl, 0);
 	msm_bus_scale_unregister_client(resource_context.pcl);
@@ -484,6 +539,9 @@ int res_trk_update_bus_perf_level(struct vcd_dev_ctxt *dev_ctxt, u32 perf_level)
 	else if (perf_level <= RESTRK_1080P_720P_PERF_LEVEL)
 		bus_clk_index = 1;
 	else
+		bus_clk_index = 2;
+
+	if (dev_ctxt->reqd_perf_lvl + dev_ctxt->curr_perf_lvl == 0)
 		bus_clk_index = 2;
 	bus_clk_index = (bus_clk_index << 1) + (client_type + 1);
 	VCDRES_MSG_LOW("%s(), bus_clk_index = %d", __func__, bus_clk_index);
@@ -597,9 +655,46 @@ void res_trk_init(struct device *device, u32 irq)
 	} else {
 		memset(&resource_context, 0, sizeof(resource_context));
 		mutex_init(&resource_context.lock);
+		mutex_init(&resource_context.secure_lock);
 		resource_context.device = device;
 		resource_context.irq_num = irq;
+		resource_context.vidc_platform_data =
+			(struct msm_vidc_platform_data *) device->platform_data;
+		if (resource_context.vidc_platform_data) {
+			resource_context.memtype =
+			resource_context.vidc_platform_data->memtype;
+			resource_context.fw_mem_type =
+			resource_context.vidc_platform_data->memtype;
+			resource_context.cmd_mem_type =
+			resource_context.vidc_platform_data->memtype;
+			if (resource_context.vidc_platform_data->enable_ion) {
+				resource_context.res_ion_client =
+					res_trk_create_ion_client();
+				if (!(resource_context.res_ion_client)) {
+					VCDRES_MSG_ERROR("%s()ION createfail\n",
+							__func__);
+					return;
+				}
+				resource_context.fw_mem_type =
+				ION_MM_FIRMWARE_HEAP_ID;
+				resource_context.cmd_mem_type =
+				ION_CP_MFC_HEAP_ID;
+			}
+			resource_context.disable_dmx =
+			resource_context.vidc_platform_data->disable_dmx;
+			resource_context.disable_fullhd =
+			resource_context.vidc_platform_data->disable_fullhd;
+#ifdef CONFIG_MSM_BUS_SCALING
+			resource_context.vidc_bus_client_pdata =
+			resource_context.vidc_platform_data->
+				vidc_bus_client_pdata;
+#endif
+		} else {
+			resource_context.memtype = -1;
+			resource_context.disable_dmx = 0;
+		}
 		resource_context.core_type = VCD_CORE_1080P;
+		resource_context.firmware_addr.mem_type = DDL_FW_MEM;
 	}
 }
 

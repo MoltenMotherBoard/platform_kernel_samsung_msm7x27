@@ -406,6 +406,7 @@ static int cpufreq_parse_governor(char *str_governor, unsigned int *policy,
 		}
 	} else if (cpufreq_driver->target) {
 		struct cpufreq_governor *t;
+		int ret;
 
 		mutex_lock(&cpufreq_governor_mutex);
 

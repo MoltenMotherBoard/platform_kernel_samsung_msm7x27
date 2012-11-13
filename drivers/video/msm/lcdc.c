@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,6 +16,13 @@
  *
  */
 
+/*histstory:
+ when       who     what, where, why                                            comment tag
+ --------   ----    ---------------------------------------------------    ----------------------------------
+ 2009-12-21 	luya    disable clk set for the 1st time 										 LCD_LUYA_20100610_01
+ 2010-03-08   luya		not config LCDC_MUX_CTL to 0 when sleep						 ZTE_LCD_LUYA_20100308_001
+ 2010-08-10   lht		729 lead panel VCI keep when sleep						 ZTE_LCD_LHT_20100810_001
+*/
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -34,7 +41,6 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
-#include <mach/msm_reqs.h>
 
 #include "msm_fb.h"
 
@@ -43,13 +49,16 @@ static int lcdc_remove(struct platform_device *pdev);
 
 static int lcdc_off(struct platform_device *pdev);
 static int lcdc_on(struct platform_device *pdev);
-
+#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA   //ZTE_LCD_LHT_20100810_001
+extern u32 LcdPanleID;
+#endif
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
 static int pdev_list_cnt;
 
 static struct clk *pixel_mdp_clk; /* drives the lcdc block in mdp */
 static struct clk *pixel_lcdc_clk; /* drives the lcdc interface */
 
+static boolean be_firsttime = true;			///LCD_LUYA_20100610_01
 static struct platform_driver lcdc_driver = {
 	.probe = lcdc_probe,
 	.remove = lcdc_remove,
@@ -73,16 +82,30 @@ static int lcdc_off(struct platform_device *pdev)
 
 	clk_disable(pixel_mdp_clk);
 	clk_disable(pixel_lcdc_clk);
-
+#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA   //ZTE_LCD_LHT_20100810_001
+	if(LcdPanleID!=42)	
+	{
+		if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
+			lcdc_pdata->lcdc_power_save(0);
+	}
+#elif defined(CONFIG_FB_MSM_LCDC_SKATE_WVGA)||defined(CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA)
+#else
 	if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
-		lcdc_pdata->lcdc_power_save(0);
-
-	if (lcdc_pdata && lcdc_pdata->lcdc_gpio_config)
-		ret = lcdc_pdata->lcdc_gpio_config(0);
+			lcdc_pdata->lcdc_power_save(0);
+#endif
+	///ZTE_LCD_LUYA_20100308_001
+/*	if (lcdc_pdata && lcdc_pdata->lcdc_gpio_config)
+		ret = lcdc_pdata->lcdc_gpio_config(0);*/
 
 #ifndef CONFIG_MSM_BUS_SCALING
-	if (mfd->ebi1_clk)
+	if (mfd->ebi1_clk) {
+		if (mdp_rev == MDP_REV_303) {
+			if (clk_set_rate(mfd->ebi1_clk, 0))
+				pr_err("%s: ebi1_lcdc_clk set rate failed\n",
+					__func__);
+		}
 		clk_disable(mfd->ebi1_clk);
+	}
 #else
 	mdp_bus_scale_update_request(0);
 #endif
@@ -108,26 +131,69 @@ static int lcdc_on(struct platform_device *pdev)
 #ifdef CONFIG_MSM_BUS_SCALING
 	mdp_bus_scale_update_request(2);
 #else
-#ifdef CONFIG_MSM_NPA_SYSTEM_BUS
-	pm_qos_rate = MSM_AXI_FLOW_MDP_LCDC_WVGA_2BPP;
-#else
 	if (panel_pixclock_freq > 65000000)
 		/* pm_qos_rate should be in Khz */
 		pm_qos_rate = panel_pixclock_freq / 1000 ;
 	else
 		pm_qos_rate = 65000;
-#endif
 
 	if (mfd->ebi1_clk) {
-		clk_set_rate(mfd->ebi1_clk, pm_qos_rate * 1000);
+		if (mdp_rev == MDP_REV_303) {
+			if (clk_set_rate(mfd->ebi1_clk, 65000000))
+				pr_err("%s: ebi1_lcdc_clk set rate failed\n",
+					__func__);
+		} else {
+			clk_set_rate(mfd->ebi1_clk, pm_qos_rate * 1000);
+		}
 		clk_enable(mfd->ebi1_clk);
 	}
+
 #endif
+				  
 	mfd = platform_get_drvdata(pdev);
 
 	mfd->fbi->var.pixclock = clk_round_rate(pixel_mdp_clk,
 					mfd->fbi->var.pixclock);
+#ifdef CONFIG_FB_MSM_LCDC_HVGA_ROAMER
+	if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
+		lcdc_pdata->lcdc_power_save(1);
+	if (lcdc_pdata && lcdc_pdata->lcdc_gpio_config)
+		ret = lcdc_pdata->lcdc_gpio_config(1);
+	
+	if(!be_firsttime)
+	{
 	ret = clk_set_rate(pixel_mdp_clk, mfd->fbi->var.pixclock);
+	}
+	else
+	{
+		be_firsttime = false;
+	}
+
+	if (ret) {
+		pr_err("%s: Can't set MDP LCDC pixel clock to rate %u\n",
+			__func__, mfd->fbi->var.pixclock);
+		goto out;
+	}
+
+	clk_enable(pixel_mdp_clk);
+	clk_enable(pixel_lcdc_clk);
+
+	ret = panel_next_on(pdev);
+
+out:
+	return ret;
+
+#else
+///ZTE_LCD_LUYA_20091221_001		LCD_LUYA_20100610_01
+	if(!be_firsttime)
+	{
+	ret = clk_set_rate(pixel_mdp_clk, mfd->fbi->var.pixclock);
+	}
+	else
+	{
+		be_firsttime = false;
+	}
+
 	if (ret) {
 		pr_err("%s: Can't set MDP LCDC pixel clock to rate %u\n",
 			__func__, mfd->fbi->var.pixclock);
@@ -146,6 +212,7 @@ static int lcdc_on(struct platform_device *pdev)
 
 out:
 	return ret;
+#endif
 }
 
 static int lcdc_probe(struct platform_device *pdev)
@@ -213,6 +280,7 @@ static int lcdc_probe(struct platform_device *pdev)
 	fbi = mfd->fbi;
 	fbi->var.pixclock = clk_round_rate(pixel_mdp_clk,
 					mfd->panel_info.clk_rate);
+
 	fbi->var.left_margin = mfd->panel_info.lcdc.h_back_porch;
 	fbi->var.right_margin = mfd->panel_info.lcdc.h_front_porch;
 	fbi->var.upper_margin = mfd->panel_info.lcdc.v_back_porch;
