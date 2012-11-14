@@ -20,12 +20,12 @@ when         who           what, where, why                          comment tag
 --------     ----          -------------------------------------    ------------------------------
 2011-02-25	 lkej		modify the code for read lcd information 		ZTE_LCD_LKEJ_20110225_001
 2010-06-29   luya    	modify mdelay to msleep				ZTE_LCD_LUYA_20100629_001
-2010-06-22   lht		Ö§³Ö¹¤³ÌÄ£Ê½¶ÁÆÁÐÅÏ¢						ZTE_LCD_LHT_20100622_001
+2010-06-22   lht		Ö§ï¿½Ö¹ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢						ZTE_LCD_LHT_20100622_001
 2010-06-17   lht		decrease FTM  backlight level				ZTE_LCD_LHT_20100617_001
-2010-06-11   lht		Ö§³Ö¹¤³ÌÄ£Ê½¶ÁÆÁÐÅÏ¢						ZTE_LCD_LHT_20100611_001
-2010-06-10   luya		ÐÞ¸ÄBKL level								LCD_LUYA_20100610_01
-2010-05-05   lht		ÐÞ¸Äfix-linelength£¬¿ª»úÍ¼Æ¬				ZTE_LCD_LHT_20100505_001
-2010-03-25   luya		ÐÞ¸Ä¿ª»ú±³¹âÁÁ¶È							ZTE_LCD_LUYA_20100325_001
+2010-06-11   lht		Ö§ï¿½Ö¹ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢						ZTE_LCD_LHT_20100611_001
+2010-06-10   luya		ï¿½Þ¸ï¿½BKL level								LCD_LUYA_20100610_01
+2010-05-05   lht		ï¿½Þ¸ï¿½fix-linelengthï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼Æ¬				ZTE_LCD_LHT_20100505_001
+2010-03-25   luya		ï¿½Þ¸Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½							ZTE_LCD_LUYA_20100325_001
 2010-02-21   luya		change delay when wakeup                    ZTE_LCD_LUYA_20100221_001        
 2009-12-21   luya    	change logo file name 					 	ZTE_LCD_LUYA_20091221_001
 2009-11-28   hp             decrease initial brightness of backlight  ZTE_BACKLIGHT_HP_002
@@ -865,6 +865,24 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 	}
 }
 
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_LUCAS)
+struct msm_fb_data_type *cur_mfd;
+static void bckl_func(struct work_struct *ignored); 
+static DECLARE_DELAYED_WORK(bckl_work, bckl_func);
+
+static void bckl_func(struct work_struct *ignored) 
+{
+	msm_fb_set_backlight(cur_mfd,cur_mfd->bl_level,0);
+}
+#endif
+
+#if defined(CONFIG_MACH_LUCAS)
+static bool first_boot = 1;
+#endif
+#if defined(CONFIG_MACH_TASS)
+#define GPIO_LCD_DET 94 
+#endif
+
 static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			    boolean op_enable)
 {
@@ -884,14 +902,30 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on) {
-//			mdelay(100);
+#if defined(CONFIG_MACH_LUCAS)
+			if(first_boot) {
+				msleep(16);
+				ret = pdata->on(mfd->pdev);
+				first_boot = 0;
+				msleep(16);
+			} else {
+				ret = pdata->on(mfd->pdev);
+			}
+#else
+			msleep(16);
 			ret = pdata->on(mfd->pdev);
+			msleep(16);
+#endif
 			if (ret == 0) {
-				msleep(30);				////ZTE_LCD_LUYA_20100221_001				////ZTE_LCD_LUYA_20100629_001
 				mfd->panel_power_on = TRUE;
 
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_LUCAS)
+			cur_mfd = mfd;
+			schedule_delayed_work(&bckl_work, 10);
+#else
 				msm_fb_set_backlight(mfd,
-						     mfd->bl_level);
+						     mfd->bl_level, 0);
+#endif
 
 /* ToDo: possible conflict with android which doesn't expect sw refresher */
 /*
@@ -917,27 +951,35 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			mfd->op_enable = FALSE;
 			curr_pwr_state = mfd->panel_power_on;
-			msm_fb_set_backlight(mfd, 0);		///ZTE_LCD_LUYA_20100201_001
 			mfd->panel_power_on = FALSE;
-			bl_updated = 0;
 
-//			mdelay(100);				////ZTE_LCD_LUYA_20100629_001
+			msleep(16);
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_LUCAS)
+			msm_fb_set_backlight(mfd, 0, 0);
+#if defined(CONFIG_MACH_TASS)
+			//ESD Detection IRQ diabled
+                        disable_irq(MSM_GPIO_TO_INT(GPIO_LCD_DET));
+			printk("%s, TASS LCD off start, DISABLE ESD IRQ.\n",__func__);
+#endif
 			ret = pdata->off(mfd->pdev);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
-            /* ZTE_BACKLIGHT_WLY_001 @2009-10-29 backlight go to dim, begin*/
-			/*msm_fb_set_backlight(mfd, 0);*/
-			/* ZTE_BACKLIGHT_WLY_001 @2009-10-29 backlight go to dim, end*/
+#else
+			ret = pdata->off(mfd->pdev);
+			if (ret)
+				mfd->panel_power_on = curr_pwr_state;
+
+			msm_fb_set_backlight(mfd, 0, 0);
+#endif
+
 			mfd->op_enable = TRUE;
-		} else {
-			if (pdata->power_ctrl)
-				pdata->power_ctrl(FALSE);
 		}
 		break;
 	}
 
 	return ret;
 }
+
 
 int calc_fb_offset(struct msm_fb_data_type *mfd, struct fb_info *fbi, int bpp)
 {
@@ -1214,6 +1256,27 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		var->transp.length = 0;
 		bpp = 3;
 		break;
+
+	//[qct patch
+	case MDP_XRGB_8888: 
+		fix->type = FB_TYPE_PACKED_PIXELS; 
+		fix->xpanstep = 1; 
+		fix->ypanstep = 1; 
+		var->vmode = FB_VMODE_NONINTERLACED; 
+		var->blue.offset = 8; 
+		var->green.offset = 16; 
+		var->red.offset = 24; 
+		var->blue.length = 8; 
+		var->green.length = 8; 
+		var->red.length = 8; 
+		var->blue.msb_right = 0; 
+		var->green.msb_right = 0; 
+		var->red.msb_right = 0; 
+		var->transp.offset = 0; 
+		var->transp.length = 8; 
+		bpp = 4; 
+	break; 
+	//]
 
 	case MDP_ARGB_8888:
 		fix->type = FB_TYPE_PACKED_PIXELS;
