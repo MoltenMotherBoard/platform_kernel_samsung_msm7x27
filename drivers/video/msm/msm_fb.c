@@ -220,7 +220,7 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	if (bl_level_old != bl_lvl)
 		bl_updated = TRUE;
 
-	msm_fb_set_backlight(mfd, bl_lvl);
+	msm_fb_set_backlight(mfd, bl_lvl, 1);
 }
 
 static struct led_classdev backlight_led = {
@@ -839,28 +839,24 @@ static void msmfb_early_resume(struct early_suspend *h)
 }
 #endif
 
-void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
+void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl, u32 save)
 {
 	struct msm_fb_panel_data *pdata;
-
-	if (!bl_updated) {
-		unset_bl_level = bkl_lvl;
-		return;
-	} else {
-		unset_bl_level = 0;
-	}
 
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
 	if ((pdata) && (pdata->set_backlight)) {
 		down(&mfd->sem);
-		if (bl_level_old == bkl_lvl && !bl_updated) {
-			up(&mfd->sem);
-			return;
-		}
+		if ((bkl_lvl != mfd->bl_level) || (!save)) {
+			u32 old_lvl;
+
+			old_lvl = mfd->bl_level;
 		mfd->bl_level = bkl_lvl;
 		pdata->set_backlight(mfd);
-		bl_level_old = mfd->bl_level;
+
+			if (!save)
+				mfd->bl_level = old_lvl;
+		}
 		up(&mfd->sem);
 	}
 }

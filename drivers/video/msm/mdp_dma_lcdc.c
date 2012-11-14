@@ -64,7 +64,6 @@ extern uint32 mdp_intr_mask;
 
 int first_pixel_start_x;
 int first_pixel_start_y;
-static bool firstupdate = TRUE;			////LCD_LUYA_20100610_01
 
 int mdp_lcdc_on(struct platform_device *pdev)
 {
@@ -228,6 +227,7 @@ int mdp_lcdc_on(struct platform_device *pdev)
 	display_v_end =
 	    vsync_period - (v_front_porch * hsync_period) + lcdc_hsync_skew - 1;
 
+
 	if (lcdc_width != var->xres) {
 		active_h_start = hsync_start_x + first_pixel_start_x;
 		active_h_end = active_h_start + var->xres - 1;
@@ -260,8 +260,11 @@ int mdp_lcdc_on(struct platform_device *pdev)
 	}
 
 	lcdc_underflow_clr |= 0x80000000;	/* enable recovery */
-	#else
-	#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_LUCAS)
+#else
+	hsync_polarity = 0;
+	vsync_polarity = 0;
+#endif
+#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_LUCAS)
 	//#if defined(CONFIG_MACH_CALLISTO) // minhyo100515
 	printk("polarity setting\n"); // minhyodebug
 	hsync_polarity = 1; // active low
