@@ -42,6 +42,11 @@ extern void lcdc_lead_sleep(void);
 extern void lcdc_truly_sleep(void);
 extern u32 LcdPanleID;
 #endif
+
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
+extern int lcd_type_smd;
+#endif
+
 #ifdef CONFIG_FB_MSM_MDP40
 #define LCDC_BASE	0xC0000
 #define DTV_BASE	0xD0000
@@ -124,26 +129,19 @@ int mdp_lcdc_on(struct platform_device *pdev)
 
 	buf += calc_fb_offset(mfd, fbi, bpp);
 
-#ifdef CONFIG_ZTE_PLATFORM
-	dma2_cfg_reg = DMA_PACK_ALIGN_MSB | DMA_DITHER_EN | DMA_OUT_SEL_LCDC;
-
-#else
+#if defined(CONFIG_MACH_TASS) || defined(CONFIG_MACH_BENI) || defined(CONFIG_MACH_GIO) || defined(CONFIG_MACH_LUCAS) || defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_CALLISTO)
 	dma2_cfg_reg = DMA_PACK_ALIGN_LSB | DMA_DITHER_EN | DMA_OUT_SEL_LCDC;
+#else
+	dma2_cfg_reg = DMA_PACK_ALIGN_LSB | DMA_OUT_SEL_LCDC;
 #endif
+
 
 	if (mfd->fb_imgType == MDP_BGR_565)
 		dma2_cfg_reg |= DMA_PACK_PATTERN_BGR;
+	else if (mfd->fb_imgType == MDP_RGBA_8888)
+		dma2_cfg_reg |= DMA_PACK_PATTERN_BGR;
 	else
-		{///ZTE_LCD_LUYA_20100325_001
-		#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA
-			if(mfd->panel_info.bl_max==32)
-				dma2_cfg_reg |= DMA_PACK_PATTERN_RGB;
-			else
-				dma2_cfg_reg |= DMA_PACK_PATTERN_BGR;
-		#else
-			dma2_cfg_reg |= DMA_PACK_PATTERN_RGB;
-		#endif
-		}
+		dma2_cfg_reg |= DMA_PACK_PATTERN_RGB;
 
 	if (bpp == 2)
 		dma2_cfg_reg |= DMA_IBUF_FORMAT_RGB565;
@@ -184,7 +182,7 @@ int mdp_lcdc_on(struct platform_device *pdev)
 #endif
 
 	/* starting address */
-//	MDP_OUTP(MDP_BASE + dma_base + 0x8, (uint32) buf);
+	MDP_OUTP(MDP_BASE + dma_base + 0x8, (uint32) buf);
 	/* active window width and height */
 	MDP_OUTP(MDP_BASE + dma_base + 0x4, ((fbi->var.yres) << 16) |
 						(fbi->var.xres));
@@ -262,7 +260,13 @@ int mdp_lcdc_on(struct platform_device *pdev)
 	}
 
 	lcdc_underflow_clr |= 0x80000000;	/* enable recovery */
-#else
+	#else
+	#if defined(CONFIG_MACH_CALLISTO) || defined(CONFIG_MACH_LUCAS)
+	//#if defined(CONFIG_MACH_CALLISTO) // minhyo100515
+	printk("polarity setting\n"); // minhyodebug
+	hsync_polarity = 1; // active low
+	vsync_polarity = 1;	// active low
+	#else
 	hsync_polarity = 0;
 	vsync_polarity = 0;
 #endif
@@ -325,28 +329,12 @@ int mdp_lcdc_off(struct platform_device *pdev)
 		timer_base = DTV_BASE;
 	}
 #endif
-#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA    //ZTE_LCD_LHT_20100810_001
-	if(LcdPanleID==42)
-		lcdc_lead_sleep();
-	if(LcdPanleID==41)
-		lcdc_truly_sleep();
+
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO) 
+	if( lcd_type_smd )
+		ret = panel_next_off(pdev);
 #endif
-#ifdef CONFIG_FB_MSM_LCDC_SKATE_WVGA    //ZTE_LCD_LHT_20100810_001
-	if(LcdPanleID==60)
-		lcdc_lead_sleep();
-	if(LcdPanleID==61)
-		lcdc_truly_sleep();
-#endif
-#ifdef CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA    //ZTE_LCD_LHT_20100810_001
-	if(LcdPanleID==42)
-		lcdc_lead_sleep();
-	if(LcdPanleID==41)
-		lcdc_truly_sleep();
-#endif
-#ifdef CONFIG_FB_MSM_LCDC_BLADE2_WVGA    //ZTE_LCD_LHT_20100810_001
-	if(LcdPanleID==101)
-		lcdc_truly_sleep();
-#endif
+
 
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
@@ -355,10 +343,18 @@ int mdp_lcdc_off(struct platform_device *pdev)
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_pipe_ctrl(block, MDP_BLOCK_POWER_OFF, FALSE);
 
+	printk("[HSIL] %s(%d)  mdp_lcdc_off end\n", __func__, __LINE__);
+
+#if defined(CONFIG_MACH_COOPER) || defined(CONFIG_MACH_GIO)
+	if( lcd_type_smd == 0 )
+		ret = panel_next_off(pdev);
+#else
 	ret = panel_next_off(pdev);
+#endif
 
 	/* delay to make sure the last frame finishes */
-	msleep(20);				////ZTE_LCD_LUYA_20100629_001
+
+  	msleep(16);
 
 	return ret;
 }
@@ -393,16 +389,9 @@ void mdp_lcdc_update(struct msm_fb_data_type *mfd)
 		dma_base = DMA_E_BASE;
 	}
 #endif
-	if(firstupdate)			/////LCD_LUYA_20100610_01
-	{
-		firstupdate = FALSE;
 
-	}
-	else
-	{
-	/* starting address */
 	MDP_OUTP(MDP_BASE + dma_base + 0x8, (uint32) buf);
-	}
+
 
 	/* enable LCDC irq */
 	spin_lock_irqsave(&mdp_spin_lock, flag);
